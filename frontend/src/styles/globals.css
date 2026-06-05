@@ -1,0 +1,346 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────
+   Design System Tokens
+   ───────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    /* Backgrounds */
+    --bg-primary:  #080809;
+    --bg-surface:  #0f0f12;
+    --bg-elevated: #16161b;
+    --bg-hover:    #1e1e25;
+    --bg-active:   #252530;
+
+    /* Borders */
+    --border-subtle:  rgba(255, 255, 255, 0.06);
+    --border-default: rgba(255, 255, 255, 0.10);
+    --border-strong:  rgba(255, 255, 255, 0.18);
+
+    /* Text */
+    --text-primary:   #f0f0ee;
+    --text-secondary: #9090a0;
+    --text-tertiary:  #555560;
+
+    /* Accent — Olly orange */
+    --accent-primary: #ff6b35;
+    --accent-hover:   #ff8552;
+    --accent-muted:   rgba(255, 107, 53, 0.12);
+    --accent-border:  rgba(255, 107, 53, 0.25);
+
+    /* Status */
+    --green:  #22c55e;
+    --yellow: #f59e0b;
+    --red:    #ef4444;
+    --blue:   #3b82f6;
+
+    /* Radii */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+
+    /* Shadows */
+    --shadow-surface:  0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.6);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.4);
+    --shadow-modal:    0 24px 64px rgba(0, 0, 0, 0.7), 0 4px 16px rgba(0, 0, 0, 0.5);
+    --shadow-accent:   0 0 0 2px rgba(255, 107, 53, 0.35);
+
+    /* Transitions */
+    --transition-fast:   100ms ease;
+    --transition-base:   150ms ease;
+    --transition-slow:   250ms ease;
+  }
+
+  /* ── Reset & Base ─────────────────────────────────────────── */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    font-family: 'Geist', system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100vh;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    overflow-x: hidden;
+  }
+
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Typography ──────────────────────────────────────────── */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Geist', system-ui, sans-serif;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+  }
+
+  h1 { font-size: 2rem;    }
+  h2 { font-size: 1.5rem;  }
+  h3 { font-size: 1.25rem; }
+  h4 { font-size: 1.125rem;}
+  h5 { font-size: 1rem;    }
+  h6 { font-size: 0.875rem;}
+
+  p {
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  a {
+    color: var(--accent-primary);
+    text-decoration: none;
+    transition: color var(--transition-base);
+  }
+  a:hover { color: var(--accent-hover); }
+
+  code, pre, kbd {
+    font-family: 'Geist Mono', ui-monospace, monospace;
+    font-size: 0.875em;
+  }
+
+  /* ── Scrollbar ───────────────────────────────────────────── */
+  ::-webkit-scrollbar          { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track    { background: transparent; }
+  ::-webkit-scrollbar-thumb    { background: var(--border-strong); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+  ::-webkit-scrollbar-corner   { background: transparent; }
+
+  /* ── Text Selection ──────────────────────────────────────── */
+  ::selection {
+    background: var(--accent-muted);
+    color: var(--accent-primary);
+  }
+
+  /* ── Focus Ring ──────────────────────────────────────────── */
+  :focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* ── Form Elements ───────────────────────────────────────── */
+  input, textarea, select {
+    font-family: inherit;
+    font-size: inherit;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 0.5rem 0.75rem;
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+    width: 100%;
+  }
+
+  input::placeholder,
+  textarea::placeholder { color: var(--text-tertiary); }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: var(--shadow-accent);
+  }
+
+  textarea { resize: vertical; line-height: 1.6; }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 0;
+    color: inherit;
+  }
+
+  img, video { max-width: 100%; display: block; }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    margin: 1rem 0;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Component Utilities
+   ───────────────────────────────────────────────────────────── */
+@layer components {
+
+  /* ── Buttons ─────────────────────────────────────────────── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-medium select-none;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-base);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .btn-sm  { @apply btn text-xs px-3 py-1.5; }
+  .btn-md  { @apply btn text-sm px-4 py-2;   }
+  .btn-lg  { @apply btn text-base px-5 py-2.5; }
+
+  .btn-primary {
+    @apply btn-md;
+    background: var(--accent-primary);
+    color: #fff;
+  }
+  .btn-primary:hover  { background: var(--accent-hover); }
+  .btn-primary:active { opacity: 0.9; transform: scale(0.98); }
+
+  .btn-secondary {
+    @apply btn-md;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
+  }
+  .btn-secondary:hover { background: var(--bg-hover); border-color: var(--border-strong); }
+
+  .btn-ghost {
+    @apply btn-md;
+    background: transparent;
+    color: var(--text-secondary);
+  }
+  .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+  .btn-danger {
+    @apply btn-md;
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--red);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+  }
+  .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+
+  .btn-icon {
+    @apply inline-flex items-center justify-center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-secondary);
+    transition: all var(--transition-base);
+  }
+  .btn-icon:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+  .btn:disabled,
+  .btn[aria-disabled="true"] {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* ── Surfaces ────────────────────────────────────────────── */
+  .surface {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-surface);
+  }
+
+  .surface-elevated {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .surface-hover {
+    transition: background var(--transition-base), border-color var(--transition-base);
+  }
+  .surface-hover:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-default);
+  }
+
+  /* ── Badges ──────────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center gap-1 text-xs font-medium;
+    padding: 2px 8px;
+    border-radius: 99px;
+  }
+
+  .badge-green  { background: rgba(34,197,94,0.12);  color: var(--green);  border: 1px solid rgba(34,197,94,0.25);  }
+  .badge-yellow { background: rgba(245,158,11,0.12); color: var(--yellow); border: 1px solid rgba(245,158,11,0.25); }
+  .badge-red    { background: rgba(239,68,68,0.12);  color: var(--red);    border: 1px solid rgba(239,68,68,0.25);  }
+  .badge-blue   { background: rgba(59,130,246,0.12); color: var(--blue);   border: 1px solid rgba(59,130,246,0.25); }
+  .badge-accent { background: var(--accent-muted);   color: var(--accent-primary); border: 1px solid var(--accent-border); }
+  .badge-neutral{ background: var(--bg-active);      color: var(--text-secondary); border: 1px solid var(--border-subtle); }
+
+  /* ── Skeleton loading ────────────────────────────────────── */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--bg-surface) 25%,
+      var(--bg-elevated) 50%,
+      var(--bg-surface) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+    border-radius: var(--radius-md);
+  }
+
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ── Divider ─────────────────────────────────────────────── */
+  .divider {
+    height: 1px;
+    background: var(--border-subtle);
+  }
+
+  /* ── Truncate helpers ────────────────────────────────────── */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Utility Overrides
+   ───────────────────────────────────────────────────────────── */
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .glass {
+    backdrop-filter: blur(12px) saturate(1.5);
+    -webkit-backdrop-filter: blur(12px) saturate(1.5);
+    background: rgba(15, 15, 18, 0.85);
+    border: 1px solid var(--border-subtle);
+  }
+}

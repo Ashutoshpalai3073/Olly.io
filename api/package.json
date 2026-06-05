@@ -1,0 +1,13 @@
+{
+  "name": "olly-api",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "groq-sdk": "^0.7.0"
+  },
+  "devDependencies": {
+    "@vercel/node": "^4.0.0",
+    "typescript": "^5.5.3"
+  }
+}
