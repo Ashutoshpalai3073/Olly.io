@@ -1,406 +1,433 @@
-import React, { useState } from 'react';
-import { useAnalytics } from '../hooks/useAnalytics';
-import { LineChart }   from '../components/charts/LineChart';
-import { BarChart }    from '../components/charts/BarChart';
-import { DonutChart }  from '../components/charts/DonutChart';
-import type { DateRange } from '../hooks/useAnalytics';
+import { useEffect, useRef, useState } from 'react';
 
-// ── Constants ───────────────────────────────────────────────────
+// ── Hardcoded data ─────────────────────────────────────────────
 
-const PLATFORM_COLOR: Record<string, string> = {
-  google:      '#4285F4',
-  zomato:      '#E23744',
-  swiggy:      '#FC8019',
-  tripadvisor: '#00AA6C',
-};
-const PLATFORM_LABEL: Record<string, string> = {
-  google:      'Google',
-  zomato:      'Zomato',
-  swiggy:      'Swiggy',
-  tripadvisor: 'TripAdvisor',
-};
-
-const STAR_COLORS: Record<number, string> = {
-  5: '#22c55e',
-  4: '#86efac',
-  3: '#fbbf24',
-  2: '#f97316',
-  1: '#ef4444',
-};
-
-const RANGES: { label: string; value: DateRange }[] = [
-  { label: 'Last 7d',    value: 7   },
-  { label: 'Last 30d',   value: 30  },
-  { label: 'Last 90d',   value: 90  },
-  { label: 'All time',   value: 365 },
+const STATS = [
+  {
+    label: 'Responses Sent',
+    value: '34',
+    sub:   'this month',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    ),
+    accent: '#ff6b35',
+  },
+  {
+    label: 'Avg Response Time',
+    value: '2.4 hrs',
+    sub:   'per review',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </svg>
+    ),
+    accent: '#3b82f6',
+  },
+  {
+    label: 'Time Saved',
+    value: '4h 32m',
+    sub:   'vs manual writing',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+      </svg>
+    ),
+    accent: '#22c55e',
+  },
+  {
+    label: 'Positive Sentiment',
+    value: '71%',
+    sub:   'of responses',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+      </svg>
+    ),
+    accent: '#f59e0b',
+  },
 ];
 
-// ── Section wrapper ─────────────────────────────────────────────
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const REVIEWS_DATA   = [8,  6,  9,  4, 11, 14,  7];
+const RESPONSES_DATA = [5,  4,  7,  3,  8, 10,  5];
 
-function Section({ title, subtitle, children }: {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
+const RATINGS = [
+  { stars: 5, count: 14, color: '#22c55e' },
+  { stars: 4, count: 15, color: '#86efac' },
+  { stars: 3, count: 8,  color: '#fbbf24' },
+  { stars: 2, count: 6,  color: '#f97316' },
+  { stars: 1, count: 4,  color: '#ef4444' },
+];
+
+const COMPLAINTS = [
+  { label: 'Slow service',    count: 12, color: '#ef4444' },
+  { label: 'Long wait time',  count: 9,  color: '#f97316' },
+  { label: 'Cold food',       count: 7,  color: '#fb923c' },
+  { label: 'Wrong order',     count: 5,  color: '#fbbf24' },
+  { label: 'Rude staff',      count: 4,  color: '#fcd34d' },
+];
+
+const PLATFORMS = [
+  { name: 'Google',      dot: '#4285F4', reviews: 22, rate: 78, rating: 3.8 },
+  { name: 'Zomato',      dot: '#E23744', reviews: 12, rate: 65, rating: 3.2 },
+  { name: 'Swiggy',      dot: '#FC8019', reviews: 8,  rate: 58, rating: 3.5 },
+  { name: 'TripAdvisor', dot: '#00AA6C', reviews: 5,  rate: 80, rating: 4.1 },
+];
+
+// ── Helpers ────────────────────────────────────────────────────
+
+function useAnimated(trigger: boolean, duration = 900): number {
+  const [progress, setProgress] = useState(0);
+  const rafRef = useRef<number>(0);
+  const startRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!trigger) return;
+    startRef.current = null;
+    const step = (ts: number) => {
+      if (!startRef.current) startRef.current = ts;
+      const p = Math.min((ts - startRef.current) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setProgress(eased);
+      if (p < 1) rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [trigger, duration]);
+
+  return progress;
+}
+
+function Stars({ rating }: { rating: number }) {
+  return (
+    <span style={{ display: 'inline-flex', gap: 1 }}>
+      {[1, 2, 3, 4, 5].map(i => (
+        <svg key={i} width="10" height="10" viewBox="0 0 24 24"
+          fill={i <= Math.round(rating) ? '#f59e0b' : 'none'}
+          stroke="#f59e0b" strokeWidth="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      ))}
+    </span>
+  );
+}
+
+// ── Card ───────────────────────────────────────────────────────
+
+function StatCard({ label, value, sub, icon, accent }: typeof STATS[0]) {
   return (
     <div style={{
       background: 'var(--bg-elevated)',
-      border:     '1px solid var(--border-subtle)',
-      borderRadius: 'var(--radius-xl)',
-      padding:    '20px 24px',
+      border: '1px solid var(--border-default)',
+      borderRadius: 'var(--radius-md)',
+      padding: '18px 20px',
+      display: 'flex', flexDirection: 'column', gap: 12,
+      flex: 1, minWidth: 0,
     }}>
-      <div style={{ marginBottom: 16 }}>
-        <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-          {title}
-        </h2>
-        {subtitle && (
-          <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-tertiary)' }}>
-            {subtitle}
-          </p>
-        )}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+          {label}
+        </span>
+        <span style={{
+          width: 32, height: 32, borderRadius: 'var(--radius-sm)',
+          background: `${accent}18`, color: accent,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          {icon}
+        </span>
       </div>
-      {children}
+      <div>
+        <div style={{ fontSize: '30px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.04em', lineHeight: 1 }}>
+          {value}
+        </div>
+        <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: 5 }}>{sub}</div>
+      </div>
     </div>
   );
 }
 
-// ── Stat card ───────────────────────────────────────────────────
+// ── Line chart ─────────────────────────────────────────────────
 
-function StatCard({ label, value, sub, accent }: {
-  label: string; value: string | number; sub?: string; accent?: string;
+const CHART_W = 560;
+const CHART_H = 200;
+const PAD_L = 36;
+const PAD_R = 16;
+const PAD_T = 16;
+const PAD_B = 32;
+const Y_MAX = 16;
+
+function xPos(i: number) {
+  return PAD_L + (i / (DAYS.length - 1)) * (CHART_W - PAD_L - PAD_R);
+}
+function yPos(v: number) {
+  return PAD_T + (1 - v / Y_MAX) * (CHART_H - PAD_T - PAD_B);
+}
+function smooth(pts: [number, number][]): string {
+  if (pts.length < 2) return '';
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1];
+    const [x1, y1] = pts[i];
+    const cx = (x0 + x1) / 2;
+    d += ` C ${cx} ${y0} ${cx} ${y1} ${x1} ${y1}`;
+  }
+  return d;
+}
+
+function LineChartSVG({ progress }: { progress: number }) {
+  const reviewPts  = REVIEWS_DATA.map((v, i)   => [xPos(i), yPos(v)] as [number, number]);
+  const responsePts = RESPONSES_DATA.map((v, i) => [xPos(i), yPos(v)] as [number, number]);
+  const rPath = smooth(reviewPts);
+  const sPth  = smooth(responsePts);
+
+  const totalLen = 700;
+  const drawn    = totalLen * progress;
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${CHART_W} ${CHART_H}`} style={{ overflow: 'visible' }}>
+      {/* Y-axis gridlines */}
+      {[0, 4, 8, 12, 16].map(v => (
+        <g key={v}>
+          <line
+            x1={PAD_L} y1={yPos(v)} x2={CHART_W - PAD_R} y2={yPos(v)}
+            stroke="var(--border-subtle)" strokeWidth="1"
+          />
+          <text x={PAD_L - 6} y={yPos(v) + 4} textAnchor="end"
+            style={{ fontSize: 10, fill: 'var(--text-tertiary)', fontFamily: 'inherit' }}>
+            {v}
+          </text>
+        </g>
+      ))}
+
+      {/* X-axis labels */}
+      {DAYS.map((d, i) => (
+        <text key={d} x={xPos(i)} y={CHART_H - 4} textAnchor="middle"
+          style={{ fontSize: 11, fill: 'var(--text-tertiary)', fontFamily: 'inherit' }}>
+          {d}
+        </text>
+      ))}
+
+      {/* Reviews line */}
+      <path d={rPath} fill="none" stroke="#ff6b35" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+        strokeDasharray={totalLen} strokeDashoffset={totalLen - drawn} />
+
+      {/* Responses line */}
+      <path d={sPth} fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+        strokeDasharray={totalLen} strokeDashoffset={totalLen - drawn} />
+
+      {/* Dots */}
+      {progress > 0.95 && reviewPts.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={4} fill="#ff6b35" stroke="var(--bg-surface)" strokeWidth="2" />
+      ))}
+      {progress > 0.95 && responsePts.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={4} fill="#22c55e" stroke="var(--bg-surface)" strokeWidth="2" />
+      ))}
+    </svg>
+  );
+}
+
+// ── Horizontal bar ─────────────────────────────────────────────
+
+function HBar({ label, count, max, color, progress, showStars = false }: {
+  label: string; count: number; max: number; color: string; progress: number; showStars?: boolean;
 }) {
+  const pct = (count / max) * progress * 100;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0' }}>
+      <div style={{ width: showStars ? 48 : 130, flexShrink: 0, fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'right' }}>
+        {showStars
+          ? <span style={{ color: '#f59e0b', fontSize: '14px' }}>{'★'.repeat(count as number)}</span>
+          : label}
+      </div>
+      <div style={{ flex: 1, height: 10, background: 'var(--bg-hover)', borderRadius: 999, overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', width: `${pct}%`, background: color,
+          borderRadius: 999, transition: 'none',
+        }} />
+      </div>
+      <div style={{ width: 28, flexShrink: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', textAlign: 'left' }}>
+        {count}
+      </div>
+    </div>
+  );
+}
+
+// ── Section card ───────────────────────────────────────────────
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{
-      background:   'var(--bg-elevated)',
-      border:       '1px solid var(--border-subtle)',
-      borderRadius: 'var(--radius-xl)',
-      padding:      '16px 20px',
-      display:      'flex',
-      flexDirection: 'column',
-      gap:          6,
-      flex:         1,
-      minWidth:     0,
+      background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+      borderRadius: 'var(--radius-md)', overflow: 'hidden',
     }}>
-      <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: 500, letterSpacing: '0.03em', textTransform: 'uppercase' }}>
-        {label}
+      <div style={{
+        padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)',
+        fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)',
+      }}>
+        {title}
       </div>
-      <div style={{ fontSize: '26px', fontWeight: 700, color: accent ?? 'var(--text-primary)', letterSpacing: '-0.04em', lineHeight: 1 }}>
-        {value}
+      <div style={{ padding: '16px 20px' }}>
+        {children}
       </div>
-      {sub && (
-        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-          {sub}
-        </div>
-      )}
     </div>
   );
 }
 
-// ── Platform table ──────────────────────────────────────────────
-
-function PlatformTable({ stats }: {
-  stats: Array<{ platform: string; reviewCount: number; responseRate: number; avgRating: number }>;
-}) {
-  const cols: { label: string; key: keyof (typeof stats)[0]; align?: 'left' | 'right' }[] = [
-    { label: 'Platform',      key: 'platform',     align: 'left'  },
-    { label: 'Reviews',       key: 'reviewCount',  align: 'right' },
-    { label: 'Response Rate', key: 'responseRate', align: 'right' },
-    { label: 'Avg Rating',    key: 'avgRating',    align: 'right' },
-  ];
-
-  return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-      <thead>
-        <tr>
-          {cols.map(c => (
-            <th key={c.key} style={{
-              textAlign: c.align ?? 'left',
-              padding: '6px 8px',
-              fontWeight: 500,
-              color: 'var(--text-tertiary)',
-              borderBottom: '1px solid var(--border-subtle)',
-              fontSize: '11px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}>
-              {c.label}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {stats.map((s, i) => (
-          <tr key={i} style={{ borderBottom: i < stats.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
-            <td style={{ padding: '10px 8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{
-                  width: 8, height: 8,
-                  borderRadius: '50%',
-                  background: PLATFORM_COLOR[s.platform] ?? '#888',
-                  flexShrink: 0,
-                }} />
-                <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
-                  {PLATFORM_LABEL[s.platform] ?? s.platform}
-                </span>
-              </div>
-            </td>
-            <td style={{ padding: '10px 8px', textAlign: 'right', color: 'var(--text-primary)', fontWeight: 500 }}>
-              {s.reviewCount}
-            </td>
-            <td style={{ padding: '10px 8px', textAlign: 'right' }}>
-              <span style={{
-                color: s.responseRate >= 80 ? '#22c55e' : s.responseRate >= 50 ? '#fbbf24' : 'var(--red)',
-                fontWeight: 600,
-              }}>
-                {s.responseRate}%
-              </span>
-            </td>
-            <td style={{ padding: '10px 8px', textAlign: 'right', color: 'var(--text-primary)', fontWeight: 600 }}>
-              {s.avgRating.toFixed(1)} ★
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-// ── Top templates (mock) ────────────────────────────────────────
-
-const MOCK_TEMPLATES = [
-  { preview: 'Thank you so much for your kind words! We\'re thrilled to hear your experience was memorable…', usage: 24, improvement: '+0.8★' },
-  { preview: 'We sincerely apologise for the experience you had. This is not the standard we hold ourselves to…', usage: 17, improvement: '+1.2★' },
-  { preview: 'Your feedback about the wait time is something we\'re actively working to improve…', usage: 11, improvement: '+0.5★' },
-];
-
-// ── Main page ───────────────────────────────────────────────────
+// ── Page ───────────────────────────────────────────────────────
 
 export function Analytics() {
-  const [range, setRange] = useState<DateRange>(30);
-  const data = useAnalytics(range);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 80); return () => clearTimeout(t); }, []);
 
-  const {
-    totalReviews,
-    totalResponses,
-    responseRate,
-    avgResponseTime,
-    timeSaved,
-    positiveSentiment,
-    ratingTrend,
-    ratingDist,
-    platformStats,
-    reviewsOverTime,
-    responsesOverTime,
-    topComplaints,
-  } = data;
+  const lineProgress = useAnimated(mounted, 900);
+  const barProgress  = useAnimated(mounted, 700);
 
-  const ratingDistBars = [5, 4, 3, 2, 1].map(star => ({
-    label: `${star} ★`,
-    value: ratingDist[star] ?? 0,
-    color: STAR_COLORS[star],
-  }));
-
-  const platformDonut = platformStats.map(s => ({
-    label: PLATFORM_LABEL[s.platform] ?? s.platform,
-    value: s.reviewCount,
-    color: PLATFORM_COLOR[s.platform] ?? '#888',
-  }));
-
-  const trendSign    = ratingTrend.direction === 'up' ? '+' : ratingTrend.direction === 'down' ? '' : '±';
-  const trendColor   = ratingTrend.direction === 'up' ? '#22c55e' : ratingTrend.direction === 'down' ? 'var(--red)' : 'var(--text-tertiary)';
-  const trendLabel   = ratingTrend.direction === 'same'
-    ? `Average rating stayed at ${ratingTrend.current} ★ this period.`
-    : `Average rating ${ratingTrend.direction === 'up' ? 'improved' : 'dropped'} by ${Math.abs(ratingTrend.delta)} ★ vs the prior ${range}d period.`;
+  const ratingMax    = Math.max(...RATINGS.map(r => r.count));
+  const complaintMax = Math.max(...COMPLAINTS.map(c => c.count));
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 24px 48px' }}>
+    <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>
-              Analytics
-            </h1>
-            <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-tertiary)' }}>
-              {totalReviews} reviews · {totalResponses} responses
-            </p>
-          </div>
+      {/* Header */}
+      <div>
+        <h1 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: '0 0 4px' }}>
+          Analytics
+        </h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', margin: 0 }}>
+          Last 30 days · Pasta &amp; More
+        </p>
+      </div>
 
-          {/* Range selector */}
-          <div style={{ display: 'flex', gap: 4, background: 'var(--bg-active)', borderRadius: 'var(--radius-lg)', padding: 3 }}>
-            {RANGES.map(r => (
-              <button
-                key={r.value}
-                onClick={() => setRange(r.value)}
-                style={{
-                  padding:      '5px 12px',
-                  fontSize:     '12px',
-                  fontFamily:   'inherit',
-                  fontWeight:   range === r.value ? 600 : 400,
-                  background:   range === r.value ? 'var(--bg-elevated)' : 'transparent',
-                  color:        range === r.value ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                  border:       'none',
-                  borderRadius: 'var(--radius-md)',
-                  cursor:       'pointer',
-                  boxShadow:    range === r.value ? 'var(--shadow-sm)' : 'none',
-                  transition:   'all var(--transition-base)',
-                  whiteSpace:   'nowrap',
-                }}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
+      {/* Stat cards */}
+      <div style={{ display: 'flex', gap: 12 }}>
+        {STATS.map(s => <StatCard key={s.label} {...s} />)}
+      </div>
+
+      {/* Line chart */}
+      <Section title="Response Rate Over Time">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 14 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '12px', color: 'var(--text-secondary)' }}>
+            <span style={{ width: 24, height: 3, background: '#ff6b35', borderRadius: 2, display: 'inline-block' }} />
+            Reviews received
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '12px', color: 'var(--text-secondary)' }}>
+            <span style={{ width: 24, height: 3, background: '#22c55e', borderRadius: 2, display: 'inline-block' }} />
+            Responses sent
+          </span>
         </div>
+        <LineChartSVG progress={lineProgress} />
+      </Section>
 
-        {/* Top stats */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-          <StatCard
-            label="Total responses"
-            value={totalResponses}
-            sub={`out of ${totalReviews} reviews`}
-          />
-          <StatCard
-            label="Avg response time"
-            value={avgResponseTime === 0 ? '—' : `${avgResponseTime}h`}
-            sub="from review to reply"
-          />
-          <StatCard
-            label="Time saved"
-            value={timeSaved.formatted}
-            sub="at 8 min/response"
-            accent="var(--accent-primary)"
-          />
-          <StatCard
-            label="Positive sentiment"
-            value={`${positiveSentiment}%`}
-            sub="4–5 star reviews"
-            accent={positiveSentiment >= 70 ? '#22c55e' : positiveSentiment >= 50 ? '#fbbf24' : 'var(--red)'}
-          />
-        </div>
+      {/* Two-column row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
 
-        {/* Response Rate Over Time */}
-        <div style={{ marginBottom: 20 }}>
-          <Section title="Response Rate Over Time" subtitle="Daily reviews received vs responses sent">
-            <LineChart
-              series={[
-                { label: 'Reviews received', points: reviewsOverTime.map(d => ({ label: d.date, value: d.count })), color: 'var(--text-tertiary)' },
-                { label: 'Responses sent',   points: responsesOverTime.map(d => ({ label: d.date, value: d.count })), color: 'var(--accent-primary)' },
-              ]}
-              height={200}
-              showGrid
-              showDots={false}
-              animated
-            />
-          </Section>
-        </div>
-
-        {/* Rating Distribution */}
-        <div style={{ marginBottom: 20 }}>
-          <Section title="Rating Distribution">
-            <BarChart
-              data={ratingDistBars}
-              barHeight={26}
-              gap={8}
-            />
-            <p style={{ margin: '12px 0 0', fontSize: '12px', color: trendColor, fontWeight: 500 }}>
-              {trendSign}{ratingTrend.delta !== 0 ? Math.abs(ratingTrend.delta) + ' ★ · ' : ''}{trendLabel}
-            </p>
-          </Section>
-        </div>
-
-        {/* Two-column: complaints + platform */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
-
-          {/* Top Complaints */}
-          <Section title="Top Complaint Categories" subtitle="Most common issues mentioned in reviews">
-            {topComplaints.length === 0 ? (
-              <p style={{ color: 'var(--text-tertiary)', fontSize: '13px' }}>No complaint tags found.</p>
-            ) : (
-              <BarChart
-                data={topComplaints.map(t => ({ label: t.tag, value: t.count, color: '#ef4444' }))}
-                barHeight={22}
-                gap={7}
+        {/* Rating distribution */}
+        <Section title="Rating Distribution">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {RATINGS.map(r => (
+              <HBar
+                key={r.stars}
+                label={`${r.stars} star`}
+                count={r.count}
+                max={ratingMax}
+                color={r.color}
+                progress={barProgress}
+                showStars
               />
-            )}
-          </Section>
-
-          {/* Platform Breakdown */}
-          <Section title="Platform Breakdown">
-            {platformDonut.length === 0 ? (
-              <p style={{ color: 'var(--text-tertiary)', fontSize: '13px' }}>No platform data.</p>
-            ) : (
-              <>
-                <DonutChart
-                  data={platformDonut}
-                  size={140}
-                  thickness={26}
-                  showLegend={false}
-                  centerLabel={
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        {totalReviews}
-                      </div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>reviews</div>
-                    </div>
-                  }
-                />
-                <div style={{ marginTop: 16 }}>
-                  <PlatformTable stats={platformStats} />
-                </div>
-              </>
-            )}
-          </Section>
-        </div>
-
-        {/* Top Performing Templates */}
-        <Section
-          title="Top Performing Response Templates"
-          subtitle="Templates associated with positive follow-up reviews"
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {MOCK_TEMPLATES.map((t, i) => (
-              <div
-                key={i}
-                style={{
-                  display:      'flex',
-                  alignItems:   'flex-start',
-                  gap:          16,
-                  padding:      '14px 16px',
-                  background:   'var(--bg-primary)',
-                  border:       '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-lg)',
-                }}
-              >
-                <div style={{
-                  width: 28, height: 28,
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'var(--bg-active)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '12px', fontWeight: 700, color: 'var(--text-tertiary)',
-                  flexShrink: 0,
-                }}>
-                  #{i + 1}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                    {t.preview}
-                  </p>
-                </div>
-                <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                  <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                    {t.usage} uses
-                  </span>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#22c55e' }}>
-                    {t.improvement}
-                  </span>
-                </div>
-              </div>
             ))}
+          </div>
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+              Total: {RATINGS.reduce((s, r) => s + r.count, 0)} reviews
+            </span>
+            <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+              Avg: {(RATINGS.reduce((s, r) => s + r.stars * r.count, 0) / RATINGS.reduce((s, r) => s + r.count, 0)).toFixed(1)} ★
+            </span>
+          </div>
+        </Section>
+
+        {/* Top complaints */}
+        <Section title="Top Complaint Categories">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {COMPLAINTS.map(c => (
+              <HBar
+                key={c.label}
+                label={c.label}
+                count={c.count}
+                max={complaintMax}
+                color={c.color}
+                progress={barProgress}
+              />
+            ))}
+          </div>
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+              Total complaints tracked: {COMPLAINTS.reduce((s, c) => s + c.count, 0)}
+            </span>
           </div>
         </Section>
       </div>
+
+      {/* Platform breakdown */}
+      <Section title="Platform Breakdown">
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              {['Platform', 'Reviews', 'Response Rate', 'Avg Rating'].map(h => (
+                <th key={h} style={{
+                  textAlign: 'left', fontSize: '11px', fontWeight: 600,
+                  color: 'var(--text-tertiary)', textTransform: 'uppercase',
+                  letterSpacing: '0.07em', padding: '0 12px 10px 0',
+                  borderBottom: '1px solid var(--border-subtle)',
+                }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {PLATFORMS.map((p, i) => (
+              <tr key={p.name} style={{ background: i % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
+                <td style={{ padding: '12px 12px 12px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: p.dot, flexShrink: 0 }} />
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>{p.name}</span>
+                  </div>
+                </td>
+                <td style={{ padding: '12px 12px 12px 0', fontSize: '13px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                  {p.reviews}
+                </td>
+                <td style={{ padding: '12px 12px 12px 0', minWidth: 160 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ flex: 1, height: 6, background: 'var(--bg-hover)', borderRadius: 999, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width:  `${p.rate * barProgress}%`,
+                        background: p.rate >= 75 ? '#22c55e' : p.rate >= 60 ? '#f59e0b' : '#ef4444',
+                        borderRadius: 999,
+                      }} />
+                    </div>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', minWidth: 30, fontVariantNumeric: 'tabular-nums' }}>
+                      {p.rate}%
+                    </span>
+                  </div>
+                </td>
+                <td style={{ padding: '12px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Stars rating={p.rating} />
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                      {p.rating.toFixed(1)}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Section>
+
     </div>
   );
 }

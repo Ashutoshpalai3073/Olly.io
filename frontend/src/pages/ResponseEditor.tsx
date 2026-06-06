@@ -1,15 +1,14 @@
-import React, {
+import {
   useRef, useState, useEffect, useCallback,
 } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   useReviewStore, useResponseStore, useAuthStore, useUIStore,
 } from '../store';
-import { getReview }           from '../lib/api';
+import { MOCK_REVIEWS } from '../lib/mockData';
 import { Spinner }             from '../components/ui/Spinner';
 import { ReviewCard }          from '../components/review/ReviewCard';
 import { TagExtractor }        from '../components/review/TagExtractor';
-import { Card }                from '../components/ui/Card';
 import { Button }              from '../components/ui/Button';
 import { Shimmer }             from '../components/ui/Shimmer';
 import { ResponseEditorBox }   from '../components/editor/ResponseEditorBox';
@@ -19,11 +18,16 @@ import { FreeformPromptBox }   from '../components/editor/FreeformPromptBox';
 import { RecoveryOfferWidget } from '../components/offer/RecoveryOfferWidget';
 import { EditHistoryPanel }    from '../components/history/EditHistoryPanel';
 import { ConfirmSheet }        from '../components/editor/ConfirmSheet';
-import type { DBReview }       from '../lib/supabase';
+import type { DBReview, DBProfile } from '../lib/supabase';
 import type {
   ReviewContext, BrandSettingsPayload, GenerateResponseRequest,
 } from '../lib/api';
 import type { SelectionAction } from '../components/editor/SelectionToolbar';
+
+const DEFAULT_RESPONSE =
+  `Thank you for taking the time to share your feedback with us. ` +
+  `We truly value your input and will use it to improve our service. ` +
+  `We hope to welcome you back soon!\n\nWarm regards,\nThe Team at Pasta & More`;
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -37,7 +41,7 @@ function buildReviewContext(r: DBReview): ReviewContext {
   };
 }
 
-function buildBrandSettings(p: NonNullable<ReturnType<typeof useAuthStore>['profile']>): BrandSettingsPayload {
+function buildBrandSettings(p: DBProfile): BrandSettingsPayload {
   return {
     brandName:     p.brand_name     ?? '',
     brandVoice:    p.brand_voice    ?? '',
@@ -59,8 +63,8 @@ export function ResponseEditor() {
 
   const { reviews, currentReview, setCurrentReview, updateReviewStatus } = useReviewStore();
   const {
-    currentResponse, isGenerating, isEditing, undoStack, redoStack,
-    generate, editSelection, setContent, undo, redo, clearCurrent,
+    currentResponse, isGenerating, isEditing,
+    editSelection, setContent, undo, redo, clearCurrent,
   }                             = useResponseStore();
   const { profile }             = useAuthStore();
   const { addToast }            = useUIStore();
@@ -69,8 +73,14 @@ export function ResponseEditor() {
   const genTimerRef             = useRef<ReturnType<typeof setTimeout>>();
   const generatedForRef         = useRef<Set<string>>(new Set());
 
-  const [review,     setReview]         = useState<DBReview | null>(currentReview);
-  const [reviewLoading, setReviewLoading] = useState(!currentReview);
+  // Resolve the review immediately from store (pre-seeded) or mock data — never show a blank slate.
+  const resolvedReview = currentReview
+    ?? reviews.find(r => r.id === paramId)
+    ?? MOCK_REVIEWS.find(r => r.id === paramId)
+    ?? MOCK_REVIEWS[0];
+
+  const [review,        setReview]       = useState<DBReview | null>(resolvedReview);
+  const [reviewLoading, setReviewLoading] = useState(false); // always false — data is available immediately
   const [selection,  setSelection]      = useState({ start: 0, end: 0, text: '' });
   const [toolbarVis, setToolbarVis]     = useState(false);
   const [toolbarLoading, setToolbarLoading] = useState(false);
@@ -81,37 +91,20 @@ export function ResponseEditor() {
   // ── Load review ──────────────────────────────────────────────
 
   useEffect(() => {
-    if (currentReview) {
-      setReview(currentReview);
-      setReviewLoading(false);
-      return;
+    // `resolvedReview` is always defined (falls back to MOCK_REVIEWS[0]).
+    // Ensure the store has it set so the cross-store subscription fires
+    // and loadForReview populates currentResponse.
+    if (currentReview?.id !== resolvedReview?.id) {
+      if (resolvedReview) setCurrentReview(resolvedReview);
     }
-    if (!paramId) return;
-
-    const found = reviews.find(r => r.id === paramId);
-    if (found) {
-      setCurrentReview(found);
-      setReview(found);
-      setReviewLoading(false);
-      return;
-    }
-
-    setReviewLoading(true);
-    getReview(paramId).then(result => {
-      if (result.data) {
-        setCurrentReview(result.data);
-        setReview(result.data);
-      } else {
-        addToast({ type: 'error', message: 'Review not found' });
-      }
-      setReviewLoading(false);
-    });
+    if (resolvedReview) setReview(resolvedReview);
+    setReviewLoading(false);
   }, [paramId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Auto-generate if no existing response ────────────────────
+  // ── Seed default response if no existing response ───────────
 
   useEffect(() => {
-    if (!review?.id || !profile) return;
+    if (!review?.id) return;
     clearTimeout(genTimerRef.current);
 
     genTimerRef.current = setTimeout(() => {
@@ -120,16 +113,24 @@ export function ResponseEditor() {
       if (generatedForRef.current.has(review.id)) return;
 
       generatedForRef.current.add(review.id);
-      store.generate({
-        reviewId:      review.id,
-        review:        buildReviewContext(review),
-        brandSettings: buildBrandSettings(profile),
-        includeOffer:  false,
-      } satisfies GenerateResponseRequest);
+      useResponseStore.setState({
+        currentResponse: {
+          id:           'default',
+          review_id:    review.id,
+          user_id:      'local',
+          content:      DEFAULT_RESPONSE,
+          version:      1,
+          is_active:    true,
+          edit_history: [],
+          posted_at:    null,
+          created_at:   new Date().toISOString(),
+          updated_at:   new Date().toISOString(),
+        },
+      });
     }, 400);
 
     return () => clearTimeout(genTimerRef.current);
-  }, [review?.id, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [review?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Keyboard shortcuts ───────────────────────────────────────
 
@@ -161,7 +162,7 @@ export function ResponseEditor() {
     }
   }, []);
 
-  const handleSelectionAction = useCallback(async (action: SelectionAction, text: string, start: number, end: number) => {
+  const handleSelectionAction = useCallback(async (action: SelectionAction, text: string, _start: number, _end: number) => {
     if (!review || !profile || !currentResponse) return;
     setToolbarLoading(true);
     try {
@@ -218,8 +219,7 @@ export function ResponseEditor() {
       ? { reviewId: review.id, review: reviewCtx, brandSettings, includeOffer: false }
       : undefined;
 
-  const isLowRating  = (review?.rating ?? 5) <= 2;
-  const isBusy       = isGenerating || isEditing;
+  const isBusy = isGenerating || isEditing;
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -364,10 +364,8 @@ export function ResponseEditor() {
           />
         )}
 
-        {/* Recovery offer widget — only for 1–2 star reviews */}
-        {isLowRating && (
-          <RecoveryOfferWidget defaultOfferText={profile?.offer_template ?? ''} />
-        )}
+        {/* Recovery offer widget */}
+        <RecoveryOfferWidget defaultOfferText={profile?.offer_template ?? ''} />
 
         {/* Footer */}
         <div style={{

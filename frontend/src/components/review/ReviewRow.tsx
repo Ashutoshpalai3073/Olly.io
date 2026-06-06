@@ -23,13 +23,15 @@ function excerpt(text: string): string {
 function timeShort(dateStr: string): string {
   const ms   = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(ms / 60_000);
-  if (mins < 60)  return `${mins}m`;
+  if (mins < 60)  return `${mins} min ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs  < 24)  return `${hrs}h`;
+  if (hrs  < 24)  return `${hrs} ${hrs === 1 ? 'hour' : 'hours'} ago`;
   const days = Math.floor(hrs / 24);
-  if (days < 30)  return `${days}d`;
+  if (days < 30)  return `${days} ${days === 1 ? 'day' : 'days'} ago`;
   const mo = Math.floor(days / 30);
-  return mo < 12 ? `${mo}mo` : `${Math.floor(mo / 12)}y`;
+  if (mo   < 12)  return `${mo} ${mo === 1 ? 'month' : 'months'} ago`;
+  const yrs = Math.floor(mo / 12);
+  return `${yrs} ${yrs === 1 ? 'year' : 'years'} ago`;
 }
 
 const STATUS_VARIANT: Record<ReviewStatus, BadgeProps['variant']> = {

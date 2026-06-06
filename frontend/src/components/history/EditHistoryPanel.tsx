@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useResponseStore } from '../../store';
 import type { DBResponse } from '../../lib/supabase';
@@ -57,7 +57,7 @@ export interface EditHistoryPanelProps {
   reviewId: string;
 }
 
-export function EditHistoryPanel({ reviewId }: EditHistoryPanelProps) {
+export function EditHistoryPanel({ reviewId: _reviewId }: EditHistoryPanelProps) {
   const { versions, currentResponse, setContent, undoStack } = useResponseStore();
 
   const [compareA,    setCompareA]    = useState<string | null>(null);

@@ -2,9 +2,8 @@ import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { useAuthStore }   from './store';
+import { useAuthStore, seedMockData } from './store';
 import { AppShell }       from './components/layout/AppShell';
-import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { ToastContainer } from './components/ui/ToastContainer';
 import { CommandPalette } from './components/ui/CommandPalette';
 import { DevModeBanner }  from './components/ui/DevModeBanner';
@@ -13,17 +12,16 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 import type { NavItem } from './components/layout/AppShell';
 
-// ── Lazy pages ─────────────────────────────────────────────────
+// ── Lazy pages ──────────────────────────────────────────────────
 
-const Login          = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
-const BrandSetup     = lazy(() => import('./pages/BrandSetup').then(m => ({ default: m.BrandSetup })));
 const Dashboard      = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const BrandSetup     = lazy(() => import('./pages/BrandSetup').then(m => ({ default: m.BrandSetup })));
 const ReviewQueue    = lazy(() => import('./pages/ReviewQueue').then(m => ({ default: m.ReviewQueue })));
 const ResponseEditor = lazy(() => import('./pages/ResponseEditor').then(m => ({ default: m.ResponseEditor })));
 const Analytics      = lazy(() => import('./pages/Analytics').then(m => ({ default: m.Analytics })));
 const Settings       = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 
-// ── Suspense fallback ──────────────────────────────────────────
+// ── Suspense fallback ───────────────────────────────────────────
 
 function PageLoader() {
   return (
@@ -41,7 +39,7 @@ function PageLoader() {
   );
 }
 
-// ── Nav items ──────────────────────────────────────────────────
+// ── Nav items ───────────────────────────────────────────────────
 
 const NAV_ITEMS: NavItem[] = [
   {
@@ -92,7 +90,7 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-// ── Page transition ────────────────────────────────────────────
+// ── Page transition ─────────────────────────────────────────────
 
 function Page({ children }: { children: React.ReactNode }) {
   return (
@@ -110,32 +108,30 @@ function Page({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ── Shell wrapper ──────────────────────────────────────────────
+// ── Shell wrapper ───────────────────────────────────────────────
 
 function ShellLayout({ children }: { children: React.ReactNode }) {
   const profile = useAuthStore(s => s.profile);
-  const user    = useAuthStore(s => s.user);
-
-  const userName  = profile?.brand_name ?? user?.email ?? 'User';
-  const userEmail = user?.email;
+  const brandName = profile?.brand_name ?? 'Olly';
 
   return (
-    <AppShell
-      navItems={NAV_ITEMS}
-      user={{ name: userName, email: userEmail }}
-    >
+    <AppShell navItems={NAV_ITEMS} brandName={brandName}>
       {children}
     </AppShell>
   );
 }
 
-// ── Root ───────────────────────────────────────────────────────
+// Seed stores with mock data synchronously before any page renders.
+seedMockData();
+
+// ── Root ────────────────────────────────────────────────────────
 
 export default function App() {
-  const location   = useLocation();
-  const initialize = useAuthStore(s => s.initialize);
+  const location    = useLocation();
+  const initialize  = useAuthStore(s => s.initialize);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
+  // Loads profile from mock data or Supabase on mount
   useEffect(() => { initialize(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useKeyboardShortcuts({
@@ -152,50 +148,32 @@ export default function App() {
       <AnimatePresence mode="wait" initial={false}>
         <Routes location={location} key={location.pathname}>
 
-          {/* ── Public ── */}
-          <Route path="/login" element={<Page><Login /></Page>} />
-
-          <Route path="/setup" element={
-            <ProtectedRoute requireProfile={false}>
-              <Page><BrandSetup /></Page>
-            </ProtectedRoute>
-          } />
-
-          {/* ── Protected ── */}
           <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <ShellLayout><Page><Dashboard /></Page></ShellLayout>
-            </ProtectedRoute>
+            <ShellLayout><Page><Dashboard /></Page></ShellLayout>
           } />
 
           <Route path="/queue" element={
-            <ProtectedRoute>
-              <ShellLayout><Page><ReviewQueue /></Page></ShellLayout>
-            </ProtectedRoute>
+            <ShellLayout><Page><ReviewQueue /></Page></ShellLayout>
           } />
 
           <Route path="/editor/:reviewId" element={
-            <ProtectedRoute>
-              <ShellLayout><Page><ResponseEditor /></Page></ShellLayout>
-            </ProtectedRoute>
+            <ShellLayout><Page><ResponseEditor /></Page></ShellLayout>
           } />
 
           <Route path="/analytics" element={
-            <ProtectedRoute>
-              <ShellLayout><Page><Analytics /></Page></ShellLayout>
-            </ProtectedRoute>
+            <ShellLayout><Page><Analytics /></Page></ShellLayout>
           } />
 
           <Route path="/settings" element={
-            <ProtectedRoute>
-              <ShellLayout><Page><Settings /></Page></ShellLayout>
-            </ProtectedRoute>
+            <ShellLayout><Page><Settings /></Page></ShellLayout>
           } />
 
-          {/* ── Redirects ── */}
-          <Route path="/reviews" element={<Navigate to="/queue"     replace />} />
-          <Route path="/"        element={<Navigate to="/dashboard" replace />} />
-          <Route path="*"        element={<Navigate to="/dashboard" replace />} />
+          <Route path="/setup" element={
+            <Page><BrandSetup /></Page>
+          } />
+
+          {/* Catch-all → Dashboard */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
 
         </Routes>
       </AnimatePresence>

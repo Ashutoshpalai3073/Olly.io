@@ -1,5 +1,4 @@
-import React, { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback } from 'react';
 import { Sheet } from '../ui/Sheet';
 import { PlatformBadge } from '../ui/PlatformBadge';
 import { Button } from '../ui/Button';

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import type { DBReview, ReviewTags } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase';
 import { USE_MOCK_DATA } from '@/lib/mockData';
@@ -52,16 +52,12 @@ export function TagExtractor({ review, onTagsChange, className = '', style }: Ta
   const [saving,   setSaving]     = useState(false);
   const inputRef                  = useRef<HTMLInputElement>(null);
 
-  const updateReviewInStore = useReviewStore((s) => s.reviews);
-
   /* Persist to Supabase or update mock store */
   const persist = useCallback(async (next: ReviewTags) => {
     setSaving(true);
     if (!USE_MOCK_DATA) {
-      await supabase
-        .from('reviews')
-        .update({ tags: next })
-        .eq('id', review.id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from('reviews') as any).update({ tags: next }).eq('id', review.id);
     }
     /* Update store's reviews array in-place */
     useReviewStore.setState((state) => ({
@@ -110,9 +106,6 @@ export function TagExtractor({ review, onTagsChange, className = '', style }: Ta
     /* Focus after render */
     setTimeout(() => inputRef.current?.focus(), 0);
   };
-
-  /* Keep lint happy — updateReviewInStore is only used as sentinel */
-  void updateReviewInStore;
 
   return (
     <div

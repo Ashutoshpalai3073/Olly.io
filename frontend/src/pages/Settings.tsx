@@ -1,10 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Button }   from '../components/ui/Button';
 import { Tabs }     from '../components/ui/Tabs';
 import { Toggle }   from '../components/ui/Toggle';
 import { Slider }   from '../components/ui/Slider';
 import { Modal }    from '../components/ui/Modal';
-import { Spinner }  from '../components/ui/Spinner';
 import { useAuthStore, useUIStore } from '../store';
 import { analyzeBrandVoice } from '../lib/api';
 
@@ -106,7 +105,7 @@ function BrandVoiceTab() {
         sampleResponses: [samples],
         brandName: profile?.brand_name ?? 'my restaurant',
       });
-      if (res.error) throw new Error(res.error);
+      if (res.error || !res.data) throw new Error(res.error ?? 'No data returned');
       if (res.data.detectedTone)  setVoice(res.data.detectedTone);
       if (res.data.toneFormality) setFormality(res.data.toneFormality);
       if (res.data.toneWarmth)    setWarmth(res.data.toneWarmth);

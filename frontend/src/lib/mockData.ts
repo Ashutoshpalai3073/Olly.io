@@ -82,6 +82,10 @@ export const MOCK_BRANDS: DBProfile[] = [
 // All status: 'pending'
 // ─────────────────────────────────────────────────────────────
 
+const _now    = new Date()
+const daysAgo = (d: number) => new Date(_now.getTime() - d * 24 * 60 * 60 * 1000).toISOString()
+const hrsAgo  = (h: number) => new Date(_now.getTime() - h * 60 * 60 * 1000).toISOString()
+
 export const MOCK_REVIEWS: DBReview[] = [
 
   // ── 1★ Reviews ───────────────────────────────────────────
@@ -93,11 +97,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Ravi Sharma',
     rating:        1,
     review_text:   'Waited over an hour for my order, and when I finally got it the fries were completely cold. Staff at the counter were dismissive when I raised the issue — one of them literally rolled their eyes at me. Ordered the Classic Smash Burger combo, paid ₹640, and left genuinely disappointed. This used to be my favourite quick lunch spot. Not coming back.',
-    review_date:   '2024-10-18T13:20:00Z',
+    review_date:   daysAgo(1),
     location_name: 'Burger Rush — Koramangala',
     tags:          { praises: [], complaints: ['1-hour wait', 'cold fries', 'dismissive staff', 'eye roll', 'overpriced for experience'] },
     status:        'pending',
-    created_at:    '2024-10-18T14:00:00Z',
+    created_at:    hrsAgo(22),
   },
   {
     id:            'review-002',
@@ -106,11 +110,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Meena Iyer',
     rating:        1,
     review_text:   'I found a hair in my biryani. Not at the end of the meal — at the very first bite. I told the waiter and he just offered to replace the dish rather than removing it from the bill or offering a genuine apology. The manager never came to the table. For a restaurant that charges ₹3,500 a head, this level of quality control and service recovery is completely unacceptable.',
-    review_date:   '2024-10-22T20:45:00Z',
+    review_date:   daysAgo(2),
     location_name: 'The Royal Table — New Delhi',
     tags:          { praises: [], complaints: ['hair in food', 'poor service recovery', 'manager absent', 'no bill adjustment', 'overpriced for quality'] },
     status:        'pending',
-    created_at:    '2024-10-22T21:30:00Z',
+    created_at:    hrsAgo(47),
   },
 
   // ── 2★ Reviews ───────────────────────────────────────────
@@ -122,11 +126,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Aarav Joshi',
     rating:        2,
     review_text:   'I\'ve been ordering from Pasta & More for two years, and something has definitely changed. The portions are at least 30% smaller than they were six months ago — the arrabbiata used to be a generous bowl, now it looks like a starter. The taste is still good, but I\'m paying the same price for noticeably less food. I hope this is a temporary thing and not a permanent change.',
-    review_date:   '2024-11-01T20:10:00Z',
+    review_date:   daysAgo(3),
     location_name: 'Pasta & More — Bandra West',
     tags:          { praises: ['taste still good'], complaints: ['portions reduced 30%', 'same price for less food', 'arrabbiata too small'] },
     status:        'pending',
-    created_at:    '2024-11-01T21:00:00Z',
+    created_at:    hrsAgo(71),
   },
   {
     id:            'review-004',
@@ -135,11 +139,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Tanvi Kapoor',
     rating:        2,
     review_text:   'Our table booking was confirmed for 8 PM. We arrived on time but were made to wait 35 minutes because "the previous party hadn\'t finished." No apology, no complimentary drinks while we waited. Then we found the AC in our section had not been working — on a humid October evening, sitting in a warm corner of a formal restaurant is not pleasant. Food was good but the experience was not worth ₹8,000.',
-    review_date:   '2024-10-29T22:00:00Z',
+    review_date:   daysAgo(4),
     location_name: 'The Royal Table — New Delhi',
     tags:          { praises: ['food was good'], complaints: ['35-minute wait despite booking', 'no apology', 'no complimentary drinks', 'AC not working', 'overpriced given experience'] },
     status:        'pending',
-    created_at:    '2024-10-29T22:45:00Z',
+    created_at:    hrsAgo(95),
   },
   {
     id:            'review-005',
@@ -148,11 +152,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Kunal Malhotra',
     rating:        2,
     review_text:   'Order arrived 20 minutes late and when I opened it, someone else\'s order was in the bag — a Chicken Crispy combo instead of my Veg Smash Double. I\'m vegetarian. Called the helpline; was put on hold for 12 minutes and then told a refund would take 7 business days. The burger itself (based on a previous visit) is great, but this delivery experience was a disaster.',
-    review_date:   '2024-11-03T19:45:00Z',
+    review_date:   daysAgo(5),
     location_name: 'Burger Rush — Koramangala',
     tags:          { praises: ['burger itself is great'], complaints: ['wrong order (vegetarian concern)', '20 minutes late', '12-minute hold time', '7-day refund timeline'] },
     status:        'pending',
-    created_at:    '2024-11-03T20:30:00Z',
+    created_at:    hrsAgo(119),
   },
 
   // ── 3★ Reviews ───────────────────────────────────────────
@@ -164,11 +168,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Divya Reddy',
     rating:        3,
     review_text:   'Stopped in for a quick lunch during a work trip. The pasta was fine — cooked properly, seasoning okay, nothing memorable. Service was efficient but impersonal. The restaurant looked nice inside but the lunch menu felt limited for a place with this reputation. I expected to be wowed based on the reviews, so perhaps my expectations were too high. Worth visiting but perhaps not worth a special trip.',
-    review_date:   '2024-10-25T13:30:00Z',
+    review_date:   daysAgo(6),
     location_name: 'Pasta & More — Bandra West',
     tags:          { praises: ['pasta cooked properly', 'nice interior', 'efficient service'], complaints: ['nothing memorable', 'impersonal service', 'limited lunch menu', 'expectations not met'] },
     status:        'pending',
-    created_at:    '2024-10-25T15:00:00Z',
+    created_at:    hrsAgo(143),
   },
   {
     id:            'review-007',
@@ -177,11 +181,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Suresh Pillai',
     rating:        3,
     review_text:   'The ambiance here is genuinely lovely — warm lighting, wooden interiors, tables spaced well so you can actually have a conversation. But the menu hasn\'t changed in what feels like a year. Same dishes, same specials board. If you\'re a regular, there\'s nothing new to try. I\'d love to see seasonal specials or a rotating menu. Three stars for the atmosphere and the existing dishes, minus two for the stagnation.',
-    review_date:   '2024-11-10T20:00:00Z',
+    review_date:   daysAgo(7),
     location_name: 'Pasta & More — Bandra West',
     tags:          { praises: ['warm lighting', 'wooden interiors', 'well-spaced tables', 'great ambiance'], complaints: ['menu unchanged', 'no seasonal specials', 'nothing new for regulars'] },
     status:        'pending',
-    created_at:    '2024-11-10T21:15:00Z',
+    created_at:    hrsAgo(167),
   },
 
   // ── 4★ Reviews ───────────────────────────────────────────
@@ -193,11 +197,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Neha Gupta',
     rating:        4,
     review_text:   'Came in for a birthday dinner and had a really lovely time. The cacio e pepe was perfectly balanced — not too salty, generous with the pepper. Our server Rahul was friendly and checked in at the right moments without hovering. Only small complaint is we waited about 20 minutes for a table even with a reservation — not a dealbreaker but worth noting. Will definitely come back for the truffle pasta.',
-    review_date:   '2024-11-14T21:00:00Z',
+    review_date:   daysAgo(9),
     location_name: 'Pasta & More — Bandra West',
     tags:          { praises: ['cacio e pepe', 'server Rahul', 'birthday dinner', 'well-balanced seasoning', 'truffle pasta'], complaints: ['20-minute wait despite reservation'] },
     status:        'pending',
-    created_at:    '2024-11-14T22:30:00Z',
+    created_at:    hrsAgo(215),
   },
   {
     id:            'review-009',
@@ -206,11 +210,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Farhan Shaikh',
     rating:        4,
     review_text:   'What stood out most was that the staff actually remembered my partner\'s nut allergy without being prompted — we\'d mentioned it when booking and every dish that arrived came with a quiet confirmation that it was allergen-free. The lamb rogan josh was exceptional, and the wine list is thoughtfully curated. Docking one star only because the dessert cart felt rushed at the end.',
-    review_date:   '2024-11-06T22:15:00Z',
+    review_date:   daysAgo(11),
     location_name: 'The Royal Table — New Delhi',
     tags:          { praises: ['allergy awareness', 'lamb rogan josh', 'wine list', 'staff attentiveness', 'allergen communication'], complaints: ['dessert cart felt rushed'] },
     status:        'pending',
-    created_at:    '2024-11-06T23:00:00Z',
+    created_at:    hrsAgo(263),
   },
   {
     id:            'review-010',
@@ -219,11 +223,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Isha Nair',
     rating:        4,
     review_text:   'Solid burgers — the Smash Double is legitimately one of the best fast-casual burgers in the city. Arrived hot, packed well, no soggy bun issues. The only reason this isn\'t five stars is that the seating area is cramped and uncomfortable if you\'re dining in. But for delivery? Pretty much perfect. Will keep ordering.',
-    review_date:   '2024-11-08T20:30:00Z',
+    review_date:   daysAgo(14),
     location_name: 'Burger Rush — Koramangala',
     tags:          { praises: ['Smash Double burger', 'hot on arrival', 'good packaging', 'no soggy bun'], complaints: ['seating area cramped'] },
     status:        'pending',
-    created_at:    '2024-11-08T21:15:00Z',
+    created_at:    hrsAgo(335),
   },
   {
     id:            'review-011',
@@ -232,11 +236,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Alok Verma',
     rating:        4,
     review_text:   'The sommelier\'s wine pairing recommendation for our tasting menu was spot-on — a Burgundy with the duck and a Gewürztraminer with the Thai prawn starter were both inspired choices. The food is genuinely excellent. The only thing holding this back from five stars is the price: for a couple, we spent ₹14,000 including wine. Worth it for a special occasion, but not something you\'d do casually.',
-    review_date:   '2024-10-31T22:45:00Z',
+    review_date:   daysAgo(16),
     location_name: 'The Royal Table — New Delhi',
     tags:          { praises: ['sommelier wine pairing', 'Burgundy with duck', 'tasting menu', 'excellent food', 'Gewürztraminer pairing'], complaints: ['very expensive (₹14,000 for two)'] },
     status:        'pending',
-    created_at:    '2024-10-31T23:30:00Z',
+    created_at:    hrsAgo(383),
   },
 
   // ── 5★ Reviews ───────────────────────────────────────────
@@ -248,11 +252,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Priya Murthy',
     rating:        5,
     review_text:   'I don\'t usually write reviews but Chef Arjun\'s truffle mushroom pasta last Thursday genuinely moved me. It\'s the kind of dish that makes you stop talking mid-sentence. Every element — the pasta texture, the earthy truffle oil, the parmesan balance — was precise. This is the best pasta I\'ve had in Mumbai, maybe in India. Thank you for making a Tuesday evening feel like something to remember.',
-    review_date:   '2024-11-12T21:30:00Z',
+    review_date:   daysAgo(19),
     location_name: 'Pasta & More — Bandra West',
     tags:          { praises: ['Chef Arjun', 'truffle mushroom pasta', 'pasta texture', 'truffle oil', 'parmesan balance', 'best pasta in Mumbai'], complaints: [] },
     status:        'pending',
-    created_at:    '2024-11-12T22:00:00Z',
+    created_at:    hrsAgo(455),
   },
   {
     id:            'review-013',
@@ -261,11 +265,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Rohit Shetty',
     rating:        5,
     review_text:   'An exceptional evening from start to finish. Every course of the tasting menu told a story — the amuse-bouche, the mid-course sorbet, the mains, the dessert. The service struck exactly the right balance: present when needed, invisible otherwise. I\'ve dined in Michelin-starred restaurants in Paris and London, and The Royal Table belongs in that conversation. James and his team have built something truly special here.',
-    review_date:   '2024-11-15T22:00:00Z',
+    review_date:   daysAgo(22),
     location_name: 'The Royal Table — New Delhi',
     tags:          { praises: ['tasting menu', 'amuse-bouche', 'mid-course sorbet', 'GM James', 'service balance', 'Michelin-level quality', 'exceptional evening'], complaints: [] },
     status:        'pending',
-    created_at:    '2024-11-15T22:45:00Z',
+    created_at:    hrsAgo(527),
   },
   {
     id:            'review-014',
@@ -274,11 +278,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Simran Kaur',
     rating:        5,
     review_text:   'My go-to for a quick, satisfying dinner when I don\'t want to cook. The Classic Smash is always consistent — never once had a bad experience in 15+ orders. Hot, fresh, right condiments every time. And the loaded fries are criminally underrated. You don\'t need to reinvent the wheel, Burger Rush — just keep doing exactly this.',
-    review_date:   '2024-11-17T19:45:00Z',
+    review_date:   daysAgo(25),
     location_name: 'Burger Rush — Koramangala',
     tags:          { praises: ['Classic Smash', 'consistency', 'hot and fresh', 'loaded fries', 'right condiments', '15+ orders no bad experience'], complaints: [] },
     status:        'pending',
-    created_at:    '2024-11-17T20:30:00Z',
+    created_at:    hrsAgo(599),
   },
   {
     id:            'review-015',
@@ -287,11 +291,11 @@ export const MOCK_REVIEWS: DBReview[] = [
     reviewer_name: 'Vikas Nanda',
     rating:        5,
     review_text:   'My wife and I came for our 10th anniversary and the team at The Royal Table went above and beyond — they had decorated our table with flowers and a handwritten card that someone had clearly spent real time on. We hadn\'t asked for any of this. The lamb and the sea bass were both perfect. I cried happy tears at one point. This is the most memorable meal of my life.',
-    review_date:   '2024-11-20T21:15:00Z',
+    review_date:   daysAgo(28),
     location_name: 'The Royal Table — New Delhi',
     tags:          { praises: ['anniversary table decoration', 'handwritten card', 'table flowers', 'lamb', 'sea bass', 'surprise personal touch', 'most memorable meal'], complaints: [] },
     status:        'pending',
-    created_at:    '2024-11-20T22:00:00Z',
+    created_at:    hrsAgo(671),
   },
 ]
 
@@ -603,3 +607,6 @@ export const MOCK_BRANDS_BY_ID = new Map(
 export const USE_MOCK_DATA =
   import.meta.env.VITE_USE_MOCK_DATA === 'true' ||
   (import.meta.env.DEV === true && !import.meta.env.VITE_SUPABASE_URL)
+
+export const mockReviews  = MOCK_REVIEWS
+export const mockResponses = MOCK_RESPONSES

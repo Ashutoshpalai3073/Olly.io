@@ -7,14 +7,13 @@ import {
   applyPromptStream,
   saveResponse,
   getReviews,
-  getReview,
   updateReviewStatus,
   getResponses,
-  getBrandSettings,
   saveBrandSettings,
 } from '@/lib/api'
 import {
-  MOCK_REVIEWS,
+  mockReviews,
+  mockResponses,
   MOCK_RESPONSES_BY_REVIEW_ID,
   MOCK_BRANDS,
   USE_MOCK_DATA,
@@ -53,29 +52,21 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
   user:      null,
-  profile:   null,
-  isLoading: true,
+  profile:   MOCK_BRANDS[0],  // immediately available — no async needed
+  isLoading: false,
 
   initialize: async () => {
-    set({ isLoading: true })
-
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (session?.user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
-
-      set({ user: session.user, profile: profile ?? null, isLoading: false })
-    } else if (USE_MOCK_DATA) {
-      set({ user: null, profile: MOCK_BRANDS[0], isLoading: false })
-    } else {
-      set({ user: null, profile: null, isLoading: false })
+    // Already seeded with mock data; skip Supabase when not configured.
+    if (USE_MOCK_DATA || !import.meta.env.VITE_SUPABASE_URL) {
+      set({ profile: MOCK_BRANDS[0], isLoading: false })
+      return
     }
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
+    set({ isLoading: true })
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+
       if (session?.user) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -83,11 +74,27 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           .eq('id', session.user.id)
           .single()
 
-        set({ user: session.user, profile: profile ?? null })
+        set({ user: session.user, profile: profile ?? MOCK_BRANDS[0], isLoading: false })
       } else {
-        set({ user: null, profile: null })
+        set({ user: null, profile: MOCK_BRANDS[0], isLoading: false })
       }
-    })
+
+      supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+
+          set({ user: session.user, profile: profile ?? MOCK_BRANDS[0] })
+        } else {
+          set({ user: null, profile: MOCK_BRANDS[0] })
+        }
+      })
+    } catch {
+      set({ profile: MOCK_BRANDS[0], isLoading: false })
+    }
   },
 
   login: async (email, password) => {
@@ -119,7 +126,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     const result = await saveBrandSettings(updates)
     if (result.error) return { error: result.error }
 
-    set({ profile: result.data })
+    set({ profile: result.data ?? null })
     return { error: null }
   },
 }))
@@ -167,11 +174,11 @@ interface ReviewState {
 
 export const useReviewStore = create<ReviewState>()(
   subscribeWithSelector((set, get) => ({
-    reviews:       [],
+    reviews:       mockReviews,               // pre-seeded — visible on first render
     currentReview: null,
     filters:       DEFAULT_FILTERS,
     isLoading:     false,
-    total:         0,
+    total:         mockReviews.length,
     totalPages:    1,
 
     fetchReviews: async () => {
@@ -179,7 +186,7 @@ export const useReviewStore = create<ReviewState>()(
 
       if (USE_MOCK_DATA) {
         const { platform, rating, status, search } = get().filters
-        let filtered = [...MOCK_REVIEWS]
+        let filtered = [...mockReviews]
 
         if (platform !== 'all') {
           filtered = filtered.filter((r) => r.platform === platform)
@@ -235,9 +242,9 @@ export const useReviewStore = create<ReviewState>()(
       }
 
       set({
-        reviews:    result.data.reviews,
-        total:      result.data.total,
-        totalPages: result.data.totalPages,
+        reviews:    result.data!.reviews,
+        total:      result.data!.total,
+        totalPages: result.data!.totalPages,
         isLoading:  false,
       })
     },
@@ -342,7 +349,7 @@ function makeBlankResponse(reviewId: string): DBResponse {
 
 export const useResponseStore = create<ResponseState>()((set, get) => ({
   currentResponse: null,
-  versions:        [],
+  versions:        mockResponses,
   isGenerating:    false,
   isEditing:       false,
   isSaving:        false,
@@ -367,7 +374,7 @@ export const useResponseStore = create<ResponseState>()((set, get) => ({
     }
 
     const result = await getResponses(reviewId)
-    if (result.error || !result.data.responses.length) {
+    if (result.error || !result.data || !result.data.responses.length) {
       set({ currentResponse: null, versions: [], undoStack: [], redoStack: [] })
       return
     }
@@ -450,7 +457,7 @@ export const useResponseStore = create<ResponseState>()((set, get) => ({
       undoStack:       pushUndo(state.undoStack, prevContent),
       redoStack:       [],
       currentResponse: state.currentResponse
-        ? { ...state.currentResponse, content: result.data.fullContent }
+        ? { ...state.currentResponse, content: result.data!.fullContent }
         : null,
     }))
   },
@@ -547,13 +554,14 @@ export const useResponseStore = create<ResponseState>()((set, get) => ({
       return
     }
 
+    const saved = result.data!
     set((state) => ({
       isSaving:        false,
       lastSaved:       new Date(),
-      currentResponse: result.data,
+      currentResponse: saved,
       versions:        [
-        result.data,
-        ...state.versions.filter((v) => v.id !== result.data.id),
+        saved,
+        ...state.versions.filter((v) => v.id !== saved.id),
       ],
     }))
 
@@ -676,3 +684,23 @@ useReviewStore.subscribe(
     }
   }
 )
+
+// ─────────────────────────────────────────────────────────────
+// seedMockData — call on app startup to guarantee every store
+// has data before the first render paints to screen.
+// ─────────────────────────────────────────────────────────────
+
+export function seedMockData() {
+  useAuthStore.setState({
+    profile:   MOCK_BRANDS[0],
+    user:      null,
+    isLoading: false,
+  })
+
+  useReviewStore.setState({
+    reviews:    mockReviews,
+    total:      mockReviews.length,
+    totalPages: 1,
+    isLoading:  false,
+  })
+}

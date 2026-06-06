@@ -1,4 +1,3 @@
-import React from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../../store';
 import { Toast } from './Toast';

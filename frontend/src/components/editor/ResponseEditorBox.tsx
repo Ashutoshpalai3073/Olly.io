@@ -165,7 +165,11 @@ export function ResponseEditorBox({
           }}>
             {badge.label}
           </span>
-          <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{
+            fontSize: '12px', fontVariantNumeric: 'tabular-nums',
+            color: charCount > charLimit ? 'var(--red)' : 'var(--text-tertiary)',
+            fontWeight: charCount > charLimit ? 600 : 400,
+          }}>
             {charCount.toLocaleString()} chars
           </span>
           <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>·</span>
@@ -221,20 +225,62 @@ export function ResponseEditorBox({
 
       {/* ── Platform limit labels ── */}
       <div style={{
-        display: 'flex', gap: 14, padding: '5px 12px',
+        display: 'flex', gap: 10, padding: '5px 12px',
         background: 'var(--bg-elevated)', flexShrink: 0,
         borderLeft: '1px solid var(--border-default)',
         borderRight: '1px solid var(--border-default)',
+        alignItems: 'center',
       }}>
         {Object.entries(PLATFORM_LIMITS).map(([key, info]) => {
-          const active = key === platform?.toLowerCase();
+          const active   = key === platform?.toLowerCase();
+          const pctLocal = active ? Math.min(charCount / info.limit, 1) : 0;
+          const over     = active && charCount > info.limit;
+          const accentC  = over ? 'var(--red)' : '#ff6b35';
+
+          if (!active) {
+            return (
+              <span key={key} style={{
+                fontSize: '11px', color: 'var(--text-tertiary)',
+                letterSpacing: '0.01em',
+              }}>
+                {info.label} {info.limit.toLocaleString()}
+              </span>
+            );
+          }
+
           return (
             <span key={key} style={{
-              fontSize: '11px', letterSpacing: '0.01em',
-              color: active ? 'var(--text-secondary)' : 'var(--text-tertiary)',
-              fontWeight: active ? 600 : 400,
+              display: 'inline-flex', flexDirection: 'column', gap: 2,
+              padding: '2px 7px', borderRadius: 'var(--radius-sm)',
+              background: over ? 'rgba(239,68,68,0.10)' : 'rgba(255,107,53,0.10)',
+              border: `1px solid ${over ? 'rgba(239,68,68,0.25)' : 'rgba(255,107,53,0.25)'}`,
             }}>
-              {info.label} {info.limit.toLocaleString()}
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: accentC, letterSpacing: '0.01em' }}>
+                  {info.label}
+                </span>
+                <span style={{
+                  fontSize: '11px', fontVariantNumeric: 'tabular-nums',
+                  color: over ? 'var(--red)' : 'var(--text-secondary)', fontWeight: 500,
+                }}>
+                  {charCount.toLocaleString()} / {info.limit.toLocaleString()}
+                </span>
+                {over && (
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--red)' }}>
+                    over limit
+                  </span>
+                )}
+              </span>
+              {/* mini progress bar */}
+              <div style={{ height: 2, background: 'var(--bg-hover)', borderRadius: 1, width: 80 }}>
+                <div style={{
+                  height: '100%',
+                  width: `${pctLocal * 100}%`,
+                  background: over ? 'var(--red)' : pctLocal > 0.9 ? 'var(--yellow)' : accentC,
+                  borderRadius: 1,
+                  transition: 'width 0.2s ease, background 0.2s ease',
+                }} />
+              </div>
             </span>
           );
         })}

@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Avatar } from '../ui/Avatar';
-import { useAuthStore } from '../../store';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -14,16 +12,10 @@ export interface NavItem {
   badge?: number;
 }
 
-export interface AppShellUser {
-  name:    string;
-  email?:  string;
-  avatar?: string;
-}
-
 export interface AppShellProps {
-  children: React.ReactNode;
-  navItems: NavItem[];
-  user?:    AppShellUser;
+  children:  React.ReactNode;
+  navItems:  NavItem[];
+  brandName?: string;
 }
 
 // ── Constants ──────────────────────────────────────────────────
@@ -55,11 +47,9 @@ function ensurePulseStyle() {
 
 // ── Component ──────────────────────────────────────────────────
 
-export function AppShell({ children, navItems, user }: AppShellProps) {
+export function AppShell({ children, navItems, brandName }: AppShellProps) {
   ensurePulseStyle();
 
-  const navigate    = useNavigate();
-  const logout      = useAuthStore(s => s.logout);
   const location    = useLocation();
   const [collapsed, setCollapsed]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -82,11 +72,6 @@ export function AppShell({ children, navItems, user }: AppShellProps) {
   const isCollapsed  = !isMobile && collapsed;
   const sidebarWidth = isCollapsed ? COLLAPSED : EXPANDED;
 
-  const handleSignOut = async () => {
-    await logout();
-    navigate('/login');
-  };
-
   // ── Sidebar content ──────────────────────────────────────────
 
   const SidebarInner = () => (
@@ -103,7 +88,6 @@ export function AppShell({ children, navItems, user }: AppShellProps) {
         gap:            8,
         minHeight:      56,
       }}>
-        {/* Wordmark */}
         <AnimatePresence initial={false} mode="wait">
           {isCollapsed ? (
             <motion.div
@@ -112,7 +96,6 @@ export function AppShell({ children, navItems, user }: AppShellProps) {
               transition={{ duration: 0.1 }}
               style={{ display: 'flex', alignItems: 'center', gap: 3 }}
             >
-              {/* Orange dot only */}
               <span style={{
                 width: 9, height: 9, borderRadius: '50%',
                 background: 'var(--accent-primary)',
@@ -126,7 +109,6 @@ export function AppShell({ children, navItems, user }: AppShellProps) {
               transition={{ duration: 0.1 }}
               style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}
             >
-              {/* Orange dot + wordmark */}
               <span style={{
                 width: 9, height: 9, borderRadius: '50%',
                 background: 'var(--accent-primary)',
@@ -302,86 +284,23 @@ export function AppShell({ children, navItems, user }: AppShellProps) {
         )}
       </AnimatePresence>
 
-      {/* ── User footer ── */}
-      {user && (
+      {/* ── Brand footer ── */}
+      {brandName && !isCollapsed && (
         <div style={{
-          borderTop:      '1px solid var(--border-subtle)',
-          padding:        isCollapsed ? '10px' : '10px 12px',
-          display:        'flex',
-          alignItems:     'center',
-          justifyContent: isCollapsed ? 'center' : undefined,
-          gap:            10,
-          flexShrink:     0,
+          borderTop: '1px solid var(--border-subtle)',
+          padding:   '10px 12px',
+          flexShrink: 0,
         }}>
-          <Avatar name={user.name} src={user.avatar} size="sm" />
-
-          <AnimatePresence initial={false}>
-            {!isCollapsed && (
-              <motion.div
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 'auto' }}
-                exit={{    opacity: 0, width: 0     }}
-                transition={{ duration: 0.12 }}
-                style={{ overflow: 'hidden', minWidth: 0, flex: 1 }}
-              >
-                <div style={{
-                  fontSize:     '13px',
-                  fontWeight:   500,
-                  color:        'var(--text-primary)',
-                  whiteSpace:   'nowrap',
-                  overflow:     'hidden',
-                  textOverflow: 'ellipsis',
-                }}>
-                  {user.name}
-                </div>
-                {user.email && (
-                  <div style={{
-                    fontSize:     '11px',
-                    color:        'var(--text-tertiary)',
-                    whiteSpace:   'nowrap',
-                    overflow:     'hidden',
-                    textOverflow: 'ellipsis',
-                  }}>
-                    {user.email}
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Sign out */}
-          <AnimatePresence initial={false}>
-            {!isCollapsed && (
-              <motion.button
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{    opacity: 0 }}
-                transition={{ duration: 0.1 }}
-                onClick={handleSignOut}
-                title="Sign out"
-                style={{
-                  display:        'flex',
-                  alignItems:     'center',
-                  justifyContent: 'center',
-                  width:          26,
-                  height:         26,
-                  borderRadius:   'var(--radius-sm)',
-                  background:     'transparent',
-                  border:         'none',
-                  color:          'var(--text-tertiary)',
-                  cursor:         'pointer',
-                  flexShrink:     0,
-                  transition:     'background var(--transition-fast), color var(--transition-fast)',
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                  <polyline points="16 17 21 12 16 7"/>
-                  <line x1="21" y1="12" x2="9" y2="12"/>
-                </svg>
-              </motion.button>
-            )}
-          </AnimatePresence>
+          <div style={{
+            fontSize:     '12px',
+            fontWeight:   500,
+            color:        'var(--text-tertiary)',
+            whiteSpace:   'nowrap',
+            overflow:     'hidden',
+            textOverflow: 'ellipsis',
+          }}>
+            {brandName}
+          </div>
         </div>
       )}
     </div>
@@ -452,12 +371,12 @@ export function AppShell({ children, navItems, user }: AppShellProps) {
               transition={{ duration: 0.18 }}
               onClick={() => setMobileOpen(false)}
               style={{
-                position:          'fixed',
-                inset:             0,
-                background:        'rgba(0,0,0,0.5)',
-                backdropFilter:    'blur(2px)',
+                position:             'fixed',
+                inset:                0,
+                background:           'rgba(0,0,0,0.5)',
+                backdropFilter:       'blur(2px)',
                 WebkitBackdropFilter: 'blur(2px)',
-                zIndex:            50,
+                zIndex:               50,
               }}
             />
             <motion.aside

@@ -1,10 +1,6 @@
-import { getAccessToken } from './supabase'
-import type {
-  DBProfile,
-  DBReview,
-  DBResponse,
-  ReviewStatus,
-} from './supabase'
+import type { DBProfile, DBReview, DBResponse, ReviewStatus } from './supabase'
+import { mockReviews, mockResponses, MOCK_BRANDS } from './mockData'
+import { groqStream, groqComplete } from './groqClient'
 
 // ─────────────────────────────────────────────────────────────
 // Core result type
@@ -39,15 +35,14 @@ export interface ReviewContext {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Request / Response interfaces per function
+// Request / Response interfaces
 // ─────────────────────────────────────────────────────────────
 
-// generateResponse / generateResponseStream
 export interface GenerateResponseRequest {
-  reviewId:        string
-  review:          ReviewContext
-  brandSettings:   BrandSettingsPayload
-  includeOffer:    boolean
+  reviewId:          string
+  review:            ReviewContext
+  brandSettings:     BrandSettingsPayload
+  includeOffer:      boolean
   previousResponse?: string
 }
 export interface GenerateResponseResult {
@@ -58,12 +53,11 @@ export interface GenerateResponseResult {
   model:      string
 }
 
-// editResponse
 export interface EditResponseRequest {
-  selectedText: string
-  fullContent:  string
-  instruction:  string
-  review:       ReviewContext
+  selectedText:  string
+  fullContent:   string
+  instruction:   string
+  review:        ReviewContext
   brandSettings: BrandSettingsPayload
 }
 export interface EditResponseResult {
@@ -71,11 +65,10 @@ export interface EditResponseResult {
   fullContent: string
 }
 
-// applyPrompt / applyPromptStream
 export interface ApplyPromptRequest {
-  content:      string
-  prompt:       string
-  review:       ReviewContext
+  content:       string
+  prompt:        string
+  review:        ReviewContext
   brandSettings: BrandSettingsPayload
 }
 export interface ApplyPromptResult {
@@ -84,21 +77,19 @@ export interface ApplyPromptResult {
   charCount: number
 }
 
-// analyzeBrandVoice
 export interface AnalyzeBrandVoiceRequest {
   sampleResponses: string[]
   brandName:       string
 }
 export interface AnalyzeBrandVoiceResult {
-  detectedTone:       string
-  characteristics:    string[]
-  suggestedRules:     string[]
-  toneFormality:      number
-  toneWarmth:         number
-  toneVerbosity:      number
+  detectedTone:    string
+  characteristics: string[]
+  suggestedRules:  string[]
+  toneFormality:   number
+  toneWarmth:      number
+  toneVerbosity:   number
 }
 
-// getReviews
 export interface GetReviewsParams {
   platform?:  string
   rating?:    number
@@ -117,12 +108,10 @@ export interface GetReviewsResult {
   totalPages: number
 }
 
-// updateReviewStatus
 export interface UpdateReviewStatusRequest {
   status: ReviewStatus
 }
 
-// saveResponse
 export interface SaveResponseRequest {
   reviewId:    string
   content:     string
@@ -131,165 +120,30 @@ export interface SaveResponseRequest {
   editHistory: Array<{ version: number; content: string; action: string; timestamp: string }>
 }
 
-// getResponses
 export interface GetResponsesResult {
   responses: DBResponse[]
 }
 
-// getBrandSettings / saveBrandSettings
-export type GetBrandSettingsResult  = DBProfile
+export type GetBrandSettingsResult   = DBProfile
 export type SaveBrandSettingsRequest = Partial<Omit<DBProfile, 'id' | 'created_at' | 'updated_at'>>
 
 // ─────────────────────────────────────────────────────────────
-// HTTP helpers
-// ─────────────────────────────────────────────────────────────
-
-async function apiFetch<T>(
-  path: string,
-  init: RequestInit = {}
-): Promise<APIResult<T>> {
-  try {
-    const token = await getAccessToken()
-
-    const response = await fetch(path, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(init.headers ?? {}),
-      },
-    })
-
-    if (!response.ok) {
-      let message = `HTTP ${response.status}`
-      try {
-        const body = await response.json()
-        message = body.error ?? body.message ?? message
-      } catch { /* response wasn't JSON */ }
-      return { data: null, error: message }
-    }
-
-    const data = (await response.json()) as T
-    return { data, error: null }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Network error'
-    return { data: null, error: message }
-  }
-}
-
-async function apiStream(
-  path: string,
-  body: Record<string, unknown>,
-  onChunk: (chunk: string) => void,
-  onDone?: (fullText: string) => void,
-  onError?: (error: string) => void,
-  onEvent?: (name: string, data: unknown) => void
-): Promise<void> {
-  let accumulated = ''
-
-  try {
-    const token = await getAccessToken()
-
-    const response = await fetch(path, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'text/event-stream',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(body),
-    })
-
-    if (!response.ok || !response.body) {
-      let message = `HTTP ${response.status}`
-      try {
-        const errBody = await response.json()
-        message = errBody.error ?? message
-      } catch { /* not JSON */ }
-      onError?.(message)
-      return
-    }
-
-    const reader  = response.body.getReader()
-    const decoder = new TextDecoder()
-    let   buffer  = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-
-      // SSE messages are delimited by double-newline
-      const messages = buffer.split(/\n\n/)
-      buffer = messages.pop() ?? ''
-
-      for (const msg of messages) {
-        const lines = msg.split('\n')
-        let eventName = 'message'
-        let dataLine  = ''
-
-        for (const line of lines) {
-          if (line.startsWith('event:')) {
-            eventName = line.slice(6).trim()
-          } else if (line.startsWith('data:')) {
-            dataLine = line.slice(5).trim()
-          }
-        }
-
-        if (!dataLine || dataLine === '[DONE]') {
-          if (dataLine === '[DONE]') { onDone?.(accumulated); return }
-          continue
-        }
-
-        if (eventName === 'done') {
-          onDone?.(accumulated)
-          return
-        }
-
-        if (eventName === 'error') {
-          try {
-            const parsed = JSON.parse(dataLine) as { error?: string }
-            onError?.(parsed.error ?? 'Stream error')
-          } catch { onError?.('Stream error') }
-          return
-        }
-
-        if (eventName === 'message' || eventName === 'chunk') {
-          try {
-            const parsed = JSON.parse(dataLine) as { content?: string; chunk?: string; text?: string }
-            const text   = parsed.content ?? parsed.chunk ?? parsed.text ?? ''
-            if (text) { accumulated += text; onChunk(text) }
-          } catch { /* malformed */ }
-        } else {
-          // Named event (e.g. "tags", "warning", "metadata")
-          try {
-            onEvent?.(eventName, JSON.parse(dataLine))
-          } catch {
-            onEvent?.(eventName, dataLine)
-          }
-        }
-      }
-    }
-
-    onDone?.(accumulated)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Stream interrupted'
-    onError?.(message)
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-// AI — Generation
+// AI — Generation (Groq streaming)
 // ─────────────────────────────────────────────────────────────
 
 export async function generateResponse(
   payload: GenerateResponseRequest
 ): Promise<APIResult<GenerateResponseResult>> {
-  return apiFetch<GenerateResponseResult>('/api/generate', {
-    method: 'POST',
-    body:   JSON.stringify(payload),
-  })
+  return {
+    data: {
+      content:    `Dear ${payload.review.reviewerName}, thank you for your feedback.`,
+      wordCount:  8,
+      charCount:  50,
+      tokensUsed: 15,
+      model:      'llama-3.3-70b-versatile',
+    },
+    error: null,
+  }
 }
 
 export async function generateResponseStream(
@@ -297,42 +151,58 @@ export async function generateResponseStream(
   onChunk:   (chunk: string) => void,
   onDone?:   (fullText: string) => void,
   onError?:  (error: string) => void,
-  onEvent?:  (name: string, data: unknown) => void
+  _onEvent?: (name: string, data: unknown) => void
 ): Promise<void> {
-  return apiStream(
-    '/api/generate-stream',
-    payload as unknown as Record<string, unknown>,
+  return groqStream(
+    payload.review,
+    payload.brandSettings,
     onChunk,
-    onDone,
-    onError,
-    onEvent
+    onDone  ?? (() => {}),
+    onError ?? (() => {}),
   )
 }
 
 // ─────────────────────────────────────────────────────────────
-// AI — Inline selection edit
+// AI — Inline selection edit (Groq non-streaming)
 // ─────────────────────────────────────────────────────────────
 
 export async function editResponse(
   payload: EditResponseRequest
 ): Promise<APIResult<EditResponseResult>> {
-  return apiFetch<EditResponseResult>('/api/edit', {
-    method: 'POST',
-    body:   JSON.stringify(payload),
-  })
+  const system = `You are a text editor for restaurant review responses.
+You receive a full response and a selected portion. Edit ONLY the selected text according to the instruction.
+Return ONLY the complete response with the edit applied. No explanation, no quotes around the response.`
+
+  const user = `Full response:
+${payload.fullContent}
+
+Selected text to edit:
+"${payload.selectedText}"
+
+Instruction: ${payload.instruction}
+
+Return the complete edited response:`
+
+  try {
+    const result = await groqComplete(system, user)
+    if (!result) return { data: null, error: 'No response from AI' }
+    return { data: { editedText: result, fullContent: result }, error: null }
+  } catch (err) {
+    return { data: null, error: err instanceof Error ? err.message : 'Edit failed' }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
-// AI — Prompt-based full rewrite
+// AI — Prompt-based full rewrite (Groq streaming)
 // ─────────────────────────────────────────────────────────────
 
 export async function applyPrompt(
   payload: ApplyPromptRequest
 ): Promise<APIResult<ApplyPromptResult>> {
-  return apiFetch<ApplyPromptResult>('/api/prompt', {
-    method: 'POST',
-    body:   JSON.stringify(payload),
-  })
+  return {
+    data: { content: payload.content, wordCount: 0, charCount: payload.content.length },
+    error: null,
+  }
 }
 
 export async function applyPromptStream(
@@ -341,97 +211,148 @@ export async function applyPromptStream(
   onDone?:  (fullText: string) => void,
   onError?: (error: string) => void
 ): Promise<void> {
-  return apiStream(
-    '/api/prompt-stream',
-    payload as unknown as Record<string, unknown>,
+  return groqStream(
+    payload.review,
+    payload.brandSettings,
     onChunk,
-    onDone,
-    onError
+    onDone  ?? (() => {}),
+    onError ?? (() => {}),
+    payload.prompt,
   )
 }
 
 // ─────────────────────────────────────────────────────────────
-// AI — Brand voice analysis
+// AI — Brand voice analysis (mock)
 // ─────────────────────────────────────────────────────────────
 
 export async function analyzeBrandVoice(
-  payload: AnalyzeBrandVoiceRequest
+  _payload: AnalyzeBrandVoiceRequest
 ): Promise<APIResult<AnalyzeBrandVoiceResult>> {
-  return apiFetch<AnalyzeBrandVoiceResult>('/api/analyze-voice', {
-    method: 'POST',
-    body:   JSON.stringify(payload),
-  })
+  return {
+    data: {
+      detectedTone:    'Warm and professional',
+      characteristics: ['Empathetic', 'Specific', 'Inviting'],
+      suggestedRules:  [
+        'Always thank reviewers by name',
+        'Acknowledge specific dishes or experiences mentioned',
+      ],
+      toneFormality: 3,
+      toneWarmth:    4,
+      toneVerbosity: 3,
+    },
+    error: null,
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
-// Reviews CRUD
+// Reviews — in-memory mock (no HTTP)
 // ─────────────────────────────────────────────────────────────
 
 export async function getReviews(
   params: GetReviewsParams = {}
 ): Promise<APIResult<GetReviewsResult>> {
-  const qs = new URLSearchParams()
-  if (params.platform  && params.platform  !== 'all') qs.set('platform', params.platform)
-  if (params.rating    !== undefined)                  qs.set('rating',   String(params.rating))
-  if (params.status    && params.status    !== 'all')  qs.set('status',   params.status)
-  if (params.search)                                   qs.set('search',   params.search)
-  if (params.page      !== undefined)                  qs.set('page',     String(params.page))
-  if (params.perPage   !== undefined)                  qs.set('perPage',  String(params.perPage))
-  if (params.sortBy)                                   qs.set('sortBy',   params.sortBy)
-  if (params.sortOrder)                                qs.set('sortOrder',params.sortOrder)
-
-  const query = qs.toString() ? `?${qs.toString()}` : ''
-  return apiFetch<GetReviewsResult>(`/api/reviews${query}`)
+  let filtered = [...mockReviews]
+  if (params.platform && params.platform !== 'all')
+    filtered = filtered.filter(r => r.platform === params.platform)
+  if (params.rating !== undefined)
+    filtered = filtered.filter(r => r.rating === params.rating)
+  if (params.status && params.status !== 'all')
+    filtered = filtered.filter(r => r.status === params.status)
+  if (params.search) {
+    const q = params.search.toLowerCase()
+    filtered = filtered.filter(
+      r => r.review_text.toLowerCase().includes(q) ||
+           (r.reviewer_name ?? '').toLowerCase().includes(q)
+    )
+  }
+  const page     = params.page    ?? 1
+  const perPage  = params.perPage ?? 20
+  return {
+    data: {
+      reviews:    filtered,
+      total:      filtered.length,
+      page,
+      perPage,
+      totalPages: Math.ceil(filtered.length / perPage),
+    },
+    error: null,
+  }
 }
 
 export async function getReview(id: string): Promise<APIResult<DBReview>> {
-  return apiFetch<DBReview>(`/api/reviews/${encodeURIComponent(id)}`)
+  const review = mockReviews.find(r => r.id === id)
+  if (!review) return { data: null, error: 'Review not found' }
+  return { data: review, error: null }
 }
 
 export async function updateReviewStatus(
-  id:      string,
-  status:  ReviewStatus
+  id:     string,
+  status: ReviewStatus
 ): Promise<APIResult<DBReview>> {
-  return apiFetch<DBReview>(`/api/reviews/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body:   JSON.stringify({ status } satisfies UpdateReviewStatusRequest),
-  })
+  const review = mockReviews.find(r => r.id === id)
+  if (!review) return { data: null, error: 'Review not found' }
+  return { data: { ...review, status }, error: null }
 }
 
 // ─────────────────────────────────────────────────────────────
-// Responses CRUD
+// Responses — localStorage + mockData fallback (no HTTP)
 // ─────────────────────────────────────────────────────────────
 
 export async function saveResponse(
   payload: SaveResponseRequest
 ): Promise<APIResult<DBResponse>> {
-  return apiFetch<DBResponse>('/api/responses', {
-    method: 'POST',
-    body:   JSON.stringify(payload),
-  })
+  const saved: DBResponse = {
+    id:           `local-${Date.now()}`,
+    review_id:    payload.reviewId,
+    user_id:      'local',
+    content:      payload.content,
+    version:      payload.version,
+    is_active:    payload.isActive,
+    edit_history: payload.editHistory,
+    posted_at:    null,
+    created_at:   new Date().toISOString(),
+    updated_at:   new Date().toISOString(),
+  }
+  try {
+    localStorage.setItem(`olly_resp_${payload.reviewId}`, JSON.stringify(saved))
+  } catch { /* storage unavailable */ }
+  return { data: saved, error: null }
 }
 
 export async function getResponses(
   reviewId: string
 ): Promise<APIResult<GetResponsesResult>> {
-  return apiFetch<GetResponsesResult>(
-    `/api/responses?reviewId=${encodeURIComponent(reviewId)}`
-  )
+  try {
+    const stored = localStorage.getItem(`olly_resp_${reviewId}`)
+    if (stored) return { data: { responses: [JSON.parse(stored) as DBResponse] }, error: null }
+  } catch { /* storage unavailable */ }
+
+  const mock = mockResponses.find(r => r.review_id === reviewId)
+  return {
+    data: { responses: mock ? [mock] : [] },
+    error: null,
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
-// Brand settings
+// Brand settings — localStorage + mock fallback (no HTTP)
 // ─────────────────────────────────────────────────────────────
 
 export async function getBrandSettings(): Promise<APIResult<GetBrandSettingsResult>> {
-  return apiFetch<GetBrandSettingsResult>('/api/brand-settings')
+  try {
+    const stored = localStorage.getItem('olly_brand')
+    if (stored) return { data: JSON.parse(stored) as DBProfile, error: null }
+  } catch { /* storage unavailable */ }
+  return { data: MOCK_BRANDS[0], error: null }
 }
 
 export async function saveBrandSettings(
   settings: SaveBrandSettingsRequest
 ): Promise<APIResult<GetBrandSettingsResult>> {
-  return apiFetch<GetBrandSettingsResult>('/api/brand-settings', {
-    method: 'POST',
-    body:   JSON.stringify(settings),
-  })
+  const base    = MOCK_BRANDS[0]
+  const updated = { ...base, ...settings, updated_at: new Date().toISOString() }
+  try {
+    localStorage.setItem('olly_brand', JSON.stringify(updated))
+  } catch { /* storage unavailable */ }
+  return { data: updated, error: null }
 }

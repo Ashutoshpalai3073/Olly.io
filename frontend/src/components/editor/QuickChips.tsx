@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Spinner from '../ui/Spinner';
 import { useResponseStore } from '../../store';
@@ -29,7 +29,7 @@ export interface QuickChipsProps {
   generatePayload?: GenerateResponseRequest;
 }
 
-export function QuickChips({ review, brandSettings, reviewId, generatePayload }: QuickChipsProps) {
+export function QuickChips({ review, brandSettings, reviewId: _reviewId, generatePayload }: QuickChipsProps) {
   const { currentResponse, isGenerating, isEditing, generate, applyPrompt } = useResponseStore();
   const [activeChip, setActiveChip]   = useState<string | null>(null);
   const [doneChip,   setDoneChip]     = useState<string | null>(null);

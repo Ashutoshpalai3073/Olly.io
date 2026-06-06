@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useResponseStore } from '../../store';
 import type { ApplyPromptRequest, ReviewContext, BrandSettingsPayload } from '../../lib/api';
