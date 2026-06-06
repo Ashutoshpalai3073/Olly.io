@@ -409,6 +409,19 @@ export const useResponseStore = create<ResponseState>()((set, get) => ({
           message: 'Generation failed',
           description: error,
         })
+      },
+      (eventName, data) => {
+        if (eventName === 'warning') {
+          const d = data as { type?: string; charCount?: number; limit?: number; platform?: string }
+          if (d.type === 'over_limit') {
+            useUIStore.getState().addToast({
+              type:        'warning',
+              message:     'Response may be too long',
+              description: `${d.charCount} characters exceeds the ${d.platform ?? 'platform'} limit of ${d.limit}. Consider shortening.`,
+              duration:    6000,
+            })
+          }
+        }
       }
     )
   },

@@ -1,0 +1,138 @@
+/* ─────────────────────────────────────────────────────────────
+   Olly — animation keyframes
+   Imported by main.tsx after globals.css.
+   Note: @keyframes shimmer is defined in globals.css (skeleton).
+   ───────────────────────────────────────────────────────────── */
+
+/* ── Opacity / visibility ───────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ── Translate + fade ────────────────────────────────────────── */
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0);     }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+
+/* ── Scale + fade ────────────────────────────────────────────── */
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+
+@keyframes scaleOut {
+  from { opacity: 1; transform: scale(1);    }
+  to   { opacity: 0; transform: scale(0.94); }
+}
+
+/* ── Pulse (status indicators) ───────────────────────────────── */
+
+@keyframes pulse {
+  0%, 100% { opacity: 1;   }
+  50%       { opacity: 0.45; }
+}
+
+@keyframes pulseSlow {
+  0%, 100% { opacity: 1;   }
+  50%       { opacity: 0.6; }
+}
+
+/* ── Spinner ─────────────────────────────────────────────────── */
+
+@keyframes spin {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Toast countdown bar ─────────────────────────────────────── */
+
+@keyframes countdownShrink {
+  from { width: 100%; }
+  to   { width: 0%;   }
+}
+
+/* ── SVG path draw-on ────────────────────────────────────────── */
+
+@keyframes drawPath {
+  from { stroke-dashoffset: var(--path-length, 1000); }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* ── Confetti burst (brand setup completion) ─────────────────── */
+
+@keyframes confettiFall {
+  0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
+  100% { transform: translateY(120px) rotate(720deg); opacity: 0; }
+}
+
+@keyframes confettiSway {
+  0%, 100% { transform: translateX(0);   }
+  25%       { transform: translateX(6px); }
+  75%       { transform: translateX(-6px); }
+}
+
+/* ── Placeholder text cycle (FreeformPromptBox) ─────────────── */
+
+@keyframes placeholderFade {
+  0%,  18% { opacity: 1;   transform: translateY(0);     }
+  22%, 98% { opacity: 0;   transform: translateY(-8px);  }
+  100%      { opacity: 0;   transform: translateY(-8px);  }
+}
+
+/* ── Bounce (empty states, celebration) ─────────────────────── */
+
+@keyframes bounceIn {
+  0%   { transform: scale(0.7);  opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  80%  { transform: scale(0.96);             }
+  100% { transform: scale(1);                }
+}
+
+/* ── Shake (inline error feedback) ──────────────────────────── */
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0);   }
+  15%       { transform: translateX(-6px); }
+  30%       { transform: translateX(5px);  }
+  45%       { transform: translateX(-4px); }
+  60%       { transform: translateX(3px);  }
+  75%       { transform: translateX(-2px); }
+  90%       { transform: translateX(1px);  }
+}
+
+/* ── Utility classes ─────────────────────────────────────────── */
+
+.animate-fadeIn        { animation: fadeIn        0.2s ease-out both; }
+.animate-slideUp       { animation: slideUp       0.22s ease-out both; }
+.animate-slideDown     { animation: slideDown     0.22s ease-out both; }
+.animate-scaleIn       { animation: scaleIn       0.18s ease-out both; }
+.animate-pulse         { animation: pulse         1.8s ease-in-out infinite; }
+.animate-spin          { animation: spin          0.7s linear infinite; }
+.animate-bounceIn      { animation: bounceIn      0.4s cubic-bezier(0.22,1,0.36,1) both; }
+.animate-shake         { animation: shake         0.45s ease-in-out both; }
+.animate-countdownShrink { animation: countdownShrink linear both; }

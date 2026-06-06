@@ -147,6 +147,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const fullResponse = await streamGroqToSse(res, stream);
 
+    if (fullResponse.length > charLimit) {
+      sseEvent(res, 'warning', {
+        type:      'over_limit',
+        charCount: fullResponse.length,
+        limit:     charLimit,
+        platform:  input.platform,
+      });
+    }
+
     const tags = await extractTags(input.reviewText, fullResponse).catch(() => []);
     sseEvent(res, 'tags', { tags });
 

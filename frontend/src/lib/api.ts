@@ -182,7 +182,8 @@ async function apiStream(
   body: Record<string, unknown>,
   onChunk: (chunk: string) => void,
   onDone?: (fullText: string) => void,
-  onError?: (error: string) => void
+  onError?: (error: string) => void,
+  onEvent?: (name: string, data: unknown) => void
 ): Promise<void> {
   let accumulated = ''
 
@@ -211,31 +212,63 @@ async function apiStream(
 
     const reader  = response.body.getReader()
     const decoder = new TextDecoder()
+    let   buffer  = ''
 
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
 
-      const raw   = decoder.decode(value, { stream: true })
-      const lines = raw.split('\n')
+      buffer += decoder.decode(value, { stream: true })
 
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue
+      // SSE messages are delimited by double-newline
+      const messages = buffer.split(/\n\n/)
+      buffer = messages.pop() ?? ''
 
-        const payload = line.slice(6).trim()
-        if (payload === '[DONE]') {
+      for (const msg of messages) {
+        const lines = msg.split('\n')
+        let eventName = 'message'
+        let dataLine  = ''
+
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            eventName = line.slice(6).trim()
+          } else if (line.startsWith('data:')) {
+            dataLine = line.slice(5).trim()
+          }
+        }
+
+        if (!dataLine || dataLine === '[DONE]') {
+          if (dataLine === '[DONE]') { onDone?.(accumulated); return }
+          continue
+        }
+
+        if (eventName === 'done') {
           onDone?.(accumulated)
           return
         }
 
-        try {
-          const parsed = JSON.parse(payload) as { chunk?: string; text?: string }
-          const text   = parsed.chunk ?? parsed.text ?? ''
-          if (text) {
-            accumulated += text
-            onChunk(text)
+        if (eventName === 'error') {
+          try {
+            const parsed = JSON.parse(dataLine) as { error?: string }
+            onError?.(parsed.error ?? 'Stream error')
+          } catch { onError?.('Stream error') }
+          return
+        }
+
+        if (eventName === 'message' || eventName === 'chunk') {
+          try {
+            const parsed = JSON.parse(dataLine) as { content?: string; chunk?: string; text?: string }
+            const text   = parsed.content ?? parsed.chunk ?? parsed.text ?? ''
+            if (text) { accumulated += text; onChunk(text) }
+          } catch { /* malformed */ }
+        } else {
+          // Named event (e.g. "tags", "warning", "metadata")
+          try {
+            onEvent?.(eventName, JSON.parse(dataLine))
+          } catch {
+            onEvent?.(eventName, dataLine)
           }
-        } catch { /* malformed SSE line — skip */ }
+        }
       }
     }
 
@@ -260,17 +293,19 @@ export async function generateResponse(
 }
 
 export async function generateResponseStream(
-  payload:  GenerateResponseRequest,
-  onChunk:  (chunk: string) => void,
-  onDone?:  (fullText: string) => void,
-  onError?: (error: string) => void
+  payload:   GenerateResponseRequest,
+  onChunk:   (chunk: string) => void,
+  onDone?:   (fullText: string) => void,
+  onError?:  (error: string) => void,
+  onEvent?:  (name: string, data: unknown) => void
 ): Promise<void> {
   return apiStream(
     '/api/generate-stream',
     payload as unknown as Record<string, unknown>,
     onChunk,
     onDone,
-    onError
+    onError,
+    onEvent
   )
 }
 

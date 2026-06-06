@@ -15,7 +15,9 @@ export { StarRating }      from './StarRating';
 export { Tabs }            from './Tabs';
 export { Textarea }        from './Textarea';
 export { Toast }           from './Toast';
-export { ToastContainer, ToastContext, useToast } from './ToastContainer';
+export { ToastContainer }  from './ToastContainer';
+export { CommandPalette }  from './CommandPalette';
+export { DevModeBanner }   from './DevModeBanner';
 export { Toggle }          from './Toggle';
 export { Tooltip }         from './Tooltip';
 
